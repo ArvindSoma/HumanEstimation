@@ -3,4 +3,4 @@
 	url = git://github.com/vchoutas/smplx.git
 [submodule "external/pyrender"]
 	path = external/pyrender
-	url = git://github.com/anders-burov/pyrender/tree/master/pyrender.git
+	url = git://github.com/anders-burov/pyrender.git
