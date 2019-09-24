@@ -102,3 +102,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+.idea/.gitignore
+.idea/HumanEstimation.iml
+.idea/inspectionProfiles/
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+
+# Rest
