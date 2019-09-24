@@ -63,8 +63,12 @@ def main(opt):
     scene.add(camera, pose=camera_pose)
 
     rendered_uv, depth = render.render(scene)
-    # mask = (rendered_uv[:, :, 2] != -1.)
-    # rendered_uv[:, :, 2][mask] = np.take(uv_faceid, rendered_uv[:, :, 2][mask].astype(np.int))
+    rendered_uv = rendered_uv.copy()
+
+    mask = rendered_uv[:, :, 2] != -1.
+    temp_2 = rendered_uv[:, :, 2]
+    temp_2[mask] = np.take(uv_faceid, temp_2[mask])
+    rendered_uv[:, :, 2] = temp_2
 
     cv2.imshow('Window', rendered_uv)
     cv2.waitKey(0)
