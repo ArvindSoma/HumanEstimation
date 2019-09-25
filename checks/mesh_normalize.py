@@ -56,21 +56,50 @@ def main(opt):
 
     mesh = pyrender.Mesh.from_trimesh(tri_mesh)
 
+    tri_mesh.show()
+
     render = pyrender.OffscreenRenderer(opt.image_width, opt.image_height)
 
     scene = pyrender.Scene(ambient_light=[0.5, 0.5, 0.5], bg_color=[-1.0, -1.0, -1.0])
     scene.add(mesh, pose=global_tr)
     scene.add(camera, pose=camera_pose)
 
-    rendered_uv, depth = render.render(scene)
+    verts -= scene.centroid
+    bounds = tri_mesh.bounding_box_oriented.extents
+
+    verts /= bounds
+
+    verts = (verts + 1/2)
+
+    rendered_uv, depth = render.render(scene=scene, flags=pyrender.RenderFlags.UV_RENDERING)
+    rendered_interp, depth = render.render(scene=scene, flags=pyrender.RenderFlags.BARYCENTRIC_COORDINATES)
+    tri_id, _ = render.render(scene=scene, flags=pyrender.RenderFlags.TRIANGLE_ID_RENDERING)
+
+    vertex_stream = np.take(verts, faces, axis=0)
+    tri_id = tri_id[:, :, 0]
+
+    rendered_interp = rendered_interp.reshape(rendered_uv.shape + (1,)).repeat([3], axis=-1)
+    out_view = vertex_stream[tri_id.astype('int')] * rendered_interp
+    out_view = out_view.sum(axis=-2)
+
+    # coord = int(tri_id[150, 150][0])
+    # temp = vertex_stream[int(tri_id[150, 150][0])] * rendered_uv[150, 150]
+
     rendered_uv = rendered_uv.copy()
 
     mask = rendered_uv[:, :, 2] != -1.
     temp_2 = rendered_uv[:, :, 2]
-    temp_2[mask] = np.take(uv_faceid, temp_2[mask])
+    temp_2[mask] = np.take(uv_faceid, temp_2[mask].astype('int'))
     rendered_uv[:, :, 2] = temp_2
 
-    cv2.imshow('Window', rendered_uv)
+    cv2.imshow('UV', rendered_uv)
+    rendered_uv[rendered_uv == -1] = 0
+    rendered_uv[:, :, 2] /= 255
+    out_view[rendered_uv == 0] = 0
+
+    cv2.imwrite('../saves/checks/mesh_normalized_uv.jpg', (rendered_uv * 255).astype('uint8'))
+    cv2.imshow('Coords', out_view)
+    cv2.imwrite('../saves/checks/mesh_normalized_coords.jpg', (out_view * 255).astype('uint8'))
     cv2.waitKey(0)
 
 
