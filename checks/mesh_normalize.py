@@ -56,7 +56,7 @@ def main(opt):
 
     mesh = pyrender.Mesh.from_trimesh(tri_mesh)
 
-    tri_mesh.show()
+    # tri_mesh.show()
 
     render = pyrender.OffscreenRenderer(opt.image_width, opt.image_height)
 
