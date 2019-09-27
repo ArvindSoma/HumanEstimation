@@ -1,11 +1,11 @@
 """
-Basic Blocks
+Basic Network Blocks
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvison
+import torchvision
 from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 from collections import namedtuple
 
