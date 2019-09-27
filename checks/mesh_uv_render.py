@@ -94,7 +94,7 @@ def main(opt):
     # mesh_verts *= 2
     mesh_verts = mesh_verts + 1/2
 
-    face_select = faces[uv_faceid[:, 0] == 6]
+    face_select = faces[uv_faceid[:, 0] == 2]
 
     # verts = np.concatenate((uv, np.ones(uv.shape[:2] + (1,))), axis=2)
 
@@ -114,8 +114,6 @@ def main(opt):
 
 
     rendered_color_visual, depth = render.render(scene=scene, flags=pyrender.RenderFlags.SKIP_CULL_FACES)
-    # # temp += 1/2
-    # cv2.imwrite('../saves/checks/mesh_uv_render.jpg', (temp * 255))
     # pyrender.Viewer(scene, render_flags={'cull_faces': False})
     cv2.imshow('Part UV', rendered_color_visual)
     # cv2.waitKey(0)
@@ -133,11 +131,11 @@ def main(opt):
 
     # rendered_uv[rendered_uv == -1] = 0
     # rendered_uv[:, :, 2] /= 255
-    # out_view[rendered_color_visual == 0] = 0
+    out_view[rendered_color_visual < 0] = 0
 
     # cv2.imwrite('../saves/checks/mesh_normalized_uv.jpg', (rendered_uv * 255).astype('uint8'))
     cv2.imshow('Coords', out_view)
-    # cv2.imwrite('../saves/checks/mesh_normalized_coords.jpg', (out_view * 255).astype('uint8'))
+    cv2.imwrite('../saves/checks/mesh_uv_render.jpg', (out_view * 255).astype('uint8'))
     cv2.waitKey(0)
 
 
