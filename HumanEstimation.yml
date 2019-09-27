@@ -1,8 +1,8 @@
 name: HumanEstimation
 channels:
-  - conda-forge
   - pytorch
   - menpo
+  - conda-forge
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=main
@@ -42,7 +42,6 @@ dependencies:
   - mkl_fft=1.0.14=py36ha843d7b_0
   - mkl_random=1.0.2=py36hd81dba3_0
   - ncurses=6.1=he6710b0_1
-  - networkx=2.3=py_0
   - ninja=1.9.0=py36hfd86e86_0
   - numpy=1.16.5=py36h7e9f1db_0
   - numpy-base=1.16.5=py36hde5b4d6_0
@@ -78,10 +77,12 @@ dependencies:
   - pip:
     - argparse==1.4.0
     - freetype-py==2.1.0.post1
+    - future==0.17.1
     - imageio==2.5.0
+    - networkx==2.2
     - pyglet==1.4.0b1
     - pyopengl==3.1.0
     - pyrender==0.1.23
     - torchgeometry==0.1.2
-prefix: /home/nomad/anaconda3/envs/HumanEstimation
+prefix: /home/arvindsoma/anaconda3/envs/HumanEstimation
 
