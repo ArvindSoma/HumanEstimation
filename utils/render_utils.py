@@ -66,7 +66,7 @@ class Render:
 
     def render_interpolate(self, vertices):
 
-        # rendered_color_visual = self.render_visual(flags=pyrender.RenderFlags.SKIP_CULL_FACES)
+        rendered_color_visual = self.render_visual(flags=pyrender.RenderFlags.SKIP_CULL_FACES)
 
         rendered_interp = self.render_visual(flags=pyrender.RenderFlags.BARYCENTRIC_COORDINATES + pyrender.RenderFlags.SKIP_CULL_FACES)
 

@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from scipy import io as io
 import torch
+from models.textures import Texture
 import pickle
 
 import trimesh
@@ -42,11 +43,15 @@ def main(opt):
                          camera_distance=opt.camera_distance, pose_y=opt.global_y,
                          focal_length=opt.focal_length)
 
-    smpl_render.set_render( vertices=smpl_vertices, faces=faces, visual=smpl_uv_visual)
+    smpl_render.set_render(vertices=smpl_vertices, faces=faces, visual=smpl_uv_visual)
 
     smpl_norm_vertices = smpl_render.vertices
 
     smpl_render_uv = smpl_render.render_visual(flags=pyrender.RenderFlags.UV_RENDERING, face_id=uv_faceid)
+
+    smpl_render.set_render(vertices=smpl_vertices, faces=faces, visual=smpl_uv_visual)
+
+    smpl_render_norm = smpl_render.render_interpolate(vertices=smpl_norm_vertices)
     
     smpl_body_uv = smpl_render_uv[:, :, :2]
     
@@ -59,7 +64,7 @@ def main(opt):
 
     aggregate_textures = np.array([]).reshape((0, 3, opt.image_height, opt.image_width))
 
-    for idx in range(1, 5):
+    for idx in range(1, 4):
         face_select = faces[uv_faceid[:, 0] == idx]
         uv_visual = trimesh.visual.ColorVisuals(vertex_colors=uv)
         uv_render.set_render(vertices=uv_vertices, faces=face_select, visual=uv_visual, normalize=False)
@@ -74,7 +79,19 @@ def main(opt):
 
     texture_map = torch.from_numpy(aggregate_textures)
 
-    smpl_uv_stack = torch.from_numpy(smpl_uv_stack)
+    smpl_uv_stack = torch.from_numpy((smpl_uv_stack * 2) - 1)
+
+    output_textured_uv = 0
+
+    for idx in range(0, 3):
+        output_textured_uv += torch.nn.functional.grid_sample(texture_map[idx: idx + 1], smpl_uv_stack[idx: idx + 1],
+                                                              mode='bilinear', padding_mode='border')
+
+    output_textured_uv = output_textured_uv[0].cpu().numpy().transpose([1, 2, 0])
+    cv2.imshow("Resampled UV", output_textured_uv)
+    cv2.imshow("Real Norm", smpl_render_norm)
+    cv2.waitKey(0)
+
 
 def parse_args(args):
     def str2bool(v):
