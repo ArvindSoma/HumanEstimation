@@ -1,8 +1,3 @@
-"""
-Mesh NOC Rendering
-"""
-
-import os
 import sys
 import cv2
 import numpy as np
@@ -14,7 +9,7 @@ import pickle
 import trimesh
 import argparse
 
-from utils.render_utils import Render
+from utils.render_utils import Render, match_faces
 
 from external.smplx.smplx import body_models
 sys.path.insert(0, '../external/pyrender')
@@ -28,7 +23,7 @@ def main(opt):
     faces = np.array(smpl['f_extended'], dtype=np.int64).reshape((-1, 3))
     uv_faceid = io.loadmat('../3d_data/DensePoseData/UV_data/UV_Processed.mat')['All_FaceIndices']
     uv = smpl['uv']
-
+    uv_vertices = (uv * 2) - 1
     # with open('../3d_data/nongrey_male_0110.jpg', 'rb') as file:
     texture = cv2.imread('../3d_data/nongrey_male_0110.jpg')
 
@@ -39,45 +34,46 @@ def main(opt):
 
     smpl_uv_visual = trimesh.visual.TextureVisuals(uv=uv, image=texture)
 
-    # smpl_render = Render(width=opt.image_width, height=opt.image_height,
-    #                      camera_distance=opt.camera_distance, pose_y=opt.global_y,
-    #                      focal_length=opt.focal_length)
-    smpl_render = Render(width=opt.image_width, height=opt.image_height, pose_y=opt.global_y)
+    # smpl_render = Render(width=opt.image_width, height=opt.image_height, pose_y=opt.global_y)
 
-    smpl_render.set_render(vertices=smpl_vertices, faces=faces, visual=smpl_uv_visual)
-
-    smpl_norm_vertices = smpl_render.vertices
-
-    smpl_render_uv = smpl_render.render_visual(flags=pyrender.RenderFlags.UV_RENDERING, face_id=uv_faceid)
+    smpl_render = Render(width=opt.image_width, height=opt.image_height,
+                         camera_distance=opt.camera_distance, pose_y=opt.global_y,
+                         focal_length=opt.focal_length)
 
     smpl_render.set_render(vertices=smpl_vertices, faces=faces)
 
-    smpl_render_norm = smpl_render.render_interpolate(vertices=uv).interpolated
-    
-    smpl_body_uv = smpl_render_uv[:, :, :2]
-    
-    smpl_body_class = smpl_render_uv[:, :, 2:3]
-    
+    smpl_norm_vertices = smpl_render.vertices
+
+    smpl_uv = smpl_render.render_interpolate(vertices=uv, skip_cull=False)
+    smpl_noc = smpl_render.render_interpolate(vertices=smpl_norm_vertices).interpolated
+
+    smpl_class_id = match_faces(smpl_uv.triangle, uv_faceid)
+    smpl_class_id = smpl_class_id.reshape(smpl_class_id.shape + (1,))
+    smpl_class_id[smpl_class_id == -1] = 0
+
     smpl_uv_stack = np.array([]).reshape((0, opt.image_height, opt.image_width, 2))
-
-    uv_vertices = (uv * 2) - 1
-    uv_render = Render(width=opt.image_width, height=opt.image_height)
-
     aggregate_textures = np.array([], dtype='float64').reshape((0, 3, opt.image_height, opt.image_width))
 
-    for idx in range(1, 4):
-        face_select = faces[uv_faceid[:, 0] == idx]
-        uv_visual = trimesh.visual.ColorVisuals(vertex_colors=uv)
-        uv_render.set_render(vertices=uv_vertices, faces=face_select, visual=uv_visual, normalize=False)
-        # out_view = uv_render.render_visual(flags=pyrender.RenderFlags.SKIP_CULL_FACES)
-        out_view = uv_render.render_interpolate(vertices=smpl_norm_vertices).interpolated.transpose([2, 0, 1])
-        aggregate_textures = np.concatenate([aggregate_textures, out_view.reshape((1,) + out_view.shape)])
-        smpl_uv_stack = np.concatenate([smpl_uv_stack, (smpl_body_uv * (smpl_body_class.repeat([2], axis=-1) == idx)).reshape(
-            (1,) + smpl_body_uv.shape)])
+    uv_render = Render(width=opt.image_width, height=opt.image_height)
 
-        cv2.imshow("Part body UV", np.concatenate([smpl_uv_stack[idx - 1], np.zeros(smpl_body_class.shape)], axis=-1))
-        cv2.imshow("Part Texture", aggregate_textures[idx - 1].transpose([1, 2, 0]))
-        cv2.waitKey(0)
+    for idx in range(1, 25):
+        # face_select = faces[uv_faceid[:, 0] == idx, :]
+        id_select = np.unique(np.hstack(
+            np.where(faces == vert)[0] for face in faces[uv_faceid[:, 0] == idx, :] for vert in face))
+
+        face_select = faces[id_select, :]
+
+        uv_render.set_render(vertices=uv_vertices, faces=face_select, normalize=False)
+        # out_view = uv_render.render_visual(flags=pyrender.RenderFlags.SKIP_CULL_FACES)
+        out_view = np.flip(uv_render.render_interpolate(vertices=smpl_norm_vertices).interpolated.transpose([2, 0, 1]),
+                           axis=1)
+        aggregate_textures = np.concatenate([aggregate_textures, out_view.reshape((1,) + out_view.shape)])
+        smpl_uv_stack = np.concatenate([smpl_uv_stack, (
+                    smpl_uv.interpolated[:, :, :-1] * (smpl_class_id.repeat([2], axis=-1) == idx)).reshape(
+            (1,) + smpl_uv.interpolated[:, :, :-1].shape)])
+
+        # cv2.imshow("Part Texture", aggregate_textures[idx - 1].transpose([1, 2, 0]))
+        # cv2.waitKey(0)
 
     texture_map = torch.from_numpy(aggregate_textures)
 
@@ -85,13 +81,19 @@ def main(opt):
 
     output_textured_uv = 0
 
-    for idx in range(0, 3):
+    for idx in range(0, 24):
         output_textured_uv += torch.nn.functional.grid_sample(texture_map[idx: idx + 1], smpl_uv_stack[idx: idx + 1],
                                                               mode='bilinear', padding_mode='border')
 
     output_textured_uv = output_textured_uv[0].cpu().numpy().transpose([1, 2, 0])
     cv2.imshow("Resampled UV", output_textured_uv)
-    cv2.imshow("Real Norm", smpl_render_norm)
+    cv2.imwrite('../saves/checks/sampled_NOC_render.jpg', (output_textured_uv * 255).astype('uint8'))
+    cv2.imshow("NOC", smpl_noc)
+    cv2.imwrite('../saves/checks/NOC_render.jpg', (smpl_noc * 255).astype('uint8'))
+    cv2.imshow("Rendered UV", smpl_uv.interpolated)
+    cv2.imwrite('../saves/checks/UV_render.jpg', (smpl_uv.interpolated * 255).astype('uint8'))
+    cv2.imshow("Rendered Class", smpl_class_id.astype('uint8'))
+    print("Image mean: ", np.mean(cv2.subtract(output_textured_uv.astype('float64'), smpl_noc.astype('float64'))))
     cv2.waitKey(0)
 
 
@@ -125,8 +127,8 @@ if __name__ == '__main__':
     # opt = parse_args(sys.argv[1:])
     opt = parse_args([
         '--n_samples=10',
-        '--camera_distance=2.8',
-        '--global_y=0.24',
+        '--camera_distance=2.3',
+        '--global_y=0.15',
         '--focal_length=1.09375',
         '--image_width=340',
         '--image_height=340',

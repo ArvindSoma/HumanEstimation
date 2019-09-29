@@ -37,8 +37,9 @@ def main(opt):
 
     # set up the rendering objects
     focal_length = opt.focal_length * opt.image_height
-    mesh_camera = pyrender.IntrinsicsCamera(focal_length, focal_length, opt.image_width / 2, opt.image_height / 2,
-                                       opt.znear, opt.zfar)
+    # mesh_camera = pyrender.IntrinsicsCamera(focal_length, focal_length, opt.image_width / 2, opt.image_height / 2,
+    #                                    opt.znear, opt.zfar)
+    mesh_camera = pyrender.OrthographicCamera(xmag=1.0, ymag=1.0, znear=0.05)
     camera = pyrender.OrthographicCamera(xmag=1.0, ymag=1.0, znear=0.05)
     camera_pose = np.array([
         [1.0, 0.0, 0.0, 0.0],
@@ -49,7 +50,7 @@ def main(opt):
 
     mesh_tr = np.array([
         [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, opt.global_y],
+        [0.0, 1.0, 0.0, opt.global_y + 0.11],
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0]
     ])
@@ -94,7 +95,7 @@ def main(opt):
     # mesh_verts *= 2
     mesh_verts = mesh_verts + 1/2
 
-    face_select = faces[uv_faceid[:, 0] == 2]
+    face_select = faces[uv_faceid[:, 0] == 1]
 
     # verts = np.concatenate((uv, np.ones(uv.shape[:2] + (1,))), axis=2)
 
