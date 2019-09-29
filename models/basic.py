@@ -16,8 +16,8 @@ class ConvLayer(nn.Module):
         seq1 = [nn.Conv2d(in_ch, out_ch, filter, stride=stride, padding=pad, dilation=dilation)]
         if bn is not None:
             seq1 += [bn(out_ch)]
-        else:
-            raise Exception('Normalization not declared!')
+        # else:
+        #     raise Exception('Normalization not declared!')
 
         self.sequence1 = nn.Sequential(*seq1)
 
@@ -32,8 +32,6 @@ class UpConvLayer(nn.Module):
         seq1 = [nn.Sequential(nn.ConvTranspose2d(in_ch, out_ch, 4, stride=stride, padding=1))]
         if bn is not None:
             seq1 += [bn(out_ch)]
-        else:
-            raise Exception('Normalization not declared!')
 
         self.sequence1 = nn.Sequential(*seq1)
 
