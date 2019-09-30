@@ -10,7 +10,6 @@ class PoseNet(nn.Module):
         super(PoseNet, self).__init__()
 
 
-
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
@@ -135,7 +134,6 @@ class UnetSkipConnectionBlock1(nn.Module):
             return self.model(x)
         else:   # add skip connections
             return torch.cat([x, self.model(x)], 1)
-
 
 
 class UnetSkipConnectionBlock2(nn.Module):
