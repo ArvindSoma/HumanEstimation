@@ -30,7 +30,8 @@ class TrainNOCs:
 
     def train(self, batch):
         output = self.seg_net(batch['image'])
-        output = output * batch['mask_image']
+        if 'mask_image' in batch.keys():
+            output = output * batch['mask_image']
 
         self.optimizer.zero_grad()
         l1_loss = self.loss_l1(output)
