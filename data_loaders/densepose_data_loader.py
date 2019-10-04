@@ -12,12 +12,14 @@ class SparsePointLoader(Dataset):
     def __init__(self,
                  train=True,
                  scales=(1.0,),
+                 parent_dir='',
                  base_size=None,
                  crop_size=256,
                  point_select=0.8,
                  flip=True,
                  transform=transforms.Compose([transforms.ToTensor()])):
 
+        self.parent_dir = parent_dir
         self.base_size = base_size
         self.scales = scales
         self.crop_size = crop_size
@@ -70,7 +72,9 @@ class SparsePointLoader(Dataset):
         data_dict = {}
 
         data_point = self.data[index]
-        image = data_point['image']
+        internal_file_loc = data_point['file_name']
+
+        image = cv2.imread(filename=os.path.join(self.parent_dir, internal_file_loc))
         w, h, c = image.shape
         xy_loc = data_point['xy'][:, [1, 0]]
         point_len, _ = xy_loc.shape

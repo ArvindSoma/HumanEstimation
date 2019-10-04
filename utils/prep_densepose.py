@@ -98,14 +98,16 @@ def main(opt):
         dp_coco = annotation_dict[key][0]
         parent_dir = annotation_dict[key][1]
         im_ids = dp_coco.getImgIds()
-        len_ids = len(im_ids)
+        # len_ids = len(im_ids)
         key_list = []
         for idx, im_id in enumerate(tqdm(im_ids, desc="Key [{}] Progress".format(key), ncols=100)):
             im_dict = {}
             im = dp_coco.loadImgs(im_id)[0]
             im_name = os.path.join(coco_folder, parent_dir, im['file_name'])
             image = cv2.imread(im_name)
-            im_dict['image'] = image
+            # im_dict['image'] = image
+
+            im_dict['file_name'] = os.path.join(parent_dir, im['file_name'])
 
             ann_ids = dp_coco.getAnnIds(imgIds=im['id'])
             anns = dp_coco.loadAnns(ann_ids)
@@ -113,7 +115,7 @@ def main(opt):
             im_dict['points'] = {}
             zero_im = np.zeros((image.shape[0], image.shape[1]))
             point_dict = im_dict['points']
-            point_dict['xy'] = np.array([], dtype='int').reshape((0, 2))
+            point_dict['yx'] = np.array([], dtype='int').reshape((0, 2))
             point_dict['iuv'] = np.array([]).reshape((0, 3))
 
             xy_mask = np.zeros((image.shape[0], image.shape[1], 1))
@@ -129,7 +131,7 @@ def main(opt):
                     y2 = min([y2, image.shape[0]])
 
                     mask_im = cv2.resize(mask, (int(x2 - x1), int(y2 - y1)), interpolation=cv2.INTER_NEAREST)
-                    mask_bool = np.tile((mask_im == 0)[:, :, np.newaxis], [1, 1, 3])
+                    # mask_bool = np.tile((mask_im == 0)[:, :, np.newaxis], [1, 1, 3])
                     zero_im[y1:y2, x1:x2] += mask_im
 
                     img_x = np.array(ann['dp_x']) / 255. * bbr[2] + x1    # Stretch the points to current box.
@@ -137,8 +139,7 @@ def main(opt):
                     img_x = img_x.astype('int') - 1 * (img_x >= image.shape[1])
                     img_y = img_y.astype('int') - 1 * (img_y >= image.shape[0])
 
-
-                    point_dict['xy'] = np.concatenate([point_dict['xy'], np.array([img_x, img_y]).T])
+                    point_dict['yx'] = np.concatenate([point_dict['yx'], np.array([img_y, img_x]).T])
 
                     point_i = np.array(ann['dp_I']).astype('int')
                     point_u = np.array(ann['dp_U'])
@@ -161,8 +162,8 @@ def main(opt):
 
             output_noc = output_noc[0].cpu().numpy().transpose([1, 2, 0])
 
-            point_dict['noc'] = output_noc[point_dict['xy'][:, 1], point_dict['xy'][:, 0], :]
-
+            point_dict['noc'] = output_noc[point_dict['yx'][:, 0], point_dict['yx'][:, 1], :]
+            # print(np.min(point_dict['yx']))
             key_list.append(im_dict)
 
             # cv2.imshow("Image", image)
