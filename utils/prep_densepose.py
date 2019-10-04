@@ -121,9 +121,11 @@ def main(opt):
             xy_mask = np.zeros((image.shape[0], image.shape[1], 1))
             zero_point_iuv = np.zeros_like(image)
             zero_point_uv = np.zeros((24, image.shape[0], image.shape[1], 2))
+
             for ann in anns:
-                ann_dict = {}
+
                 if 'dp_masks' in ann.keys():
+
                     bbr = (np.array(ann['bbox'])).astype('int')
                     mask = GetDensePoseMask(ann['dp_masks'])
                     x1, y1, x2, y2 = bbr[0], bbr[1], bbr[0] + bbr[2], bbr[1] + bbr[3]
