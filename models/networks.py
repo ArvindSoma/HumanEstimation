@@ -92,7 +92,7 @@ class UnetSkipConnectionBlock1(nn.Module):
         uprelu = nn.LeakyReLU(0.2, True)
         upnorm = norm_layer(outer_nc)
         if outermost:
-            norm_layer = False
+            norm_layer = None
         seq = [nn.LeakyReLU(0.2),
                MultiDilation(dim_out=outer_nc, dilation=dilation, norm_layer=norm_layer)
                ]
@@ -170,7 +170,7 @@ class UnetSkipConnectionBlock2(nn.Module):
         uprelu = nn.LeakyReLU(0.2, True)
         upnorm = norm_layer(outer_nc)
         if outermost:
-            norm_layer = False
+            norm_layer = None
             seq2 = [nn.LeakyReLU(0.2),
                     MultiDilation(dim_out=outer_nc, dilation=dilation, norm_layer=norm_layer)
                     ]
@@ -225,7 +225,7 @@ class UnetSkipConnectionBlock2(nn.Module):
             if use_dropout:
                 model = down + [submodule] + seq + up + [nn.Dropout(0.2)]
             else:
-                model = down + [submodule]  + seq + up
+                model = down + [submodule] + seq + up
 
         self.model = nn.Sequential(*model)
 

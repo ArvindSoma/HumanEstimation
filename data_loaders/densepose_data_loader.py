@@ -29,10 +29,10 @@ class SparsePointLoader(Dataset):
         self.transform = transform
 
         if self.train:
-            read_file_name = '../data/train.pkl'
+            read_file_name = '../data/dp_annotation/train.pkl'
 
         else:
-            read_file_name = '../data/valminusminival.pkl'
+            read_file_name = '../data/dp_annotation/minival.pkl'  # 'valminus'
             self.point_select = 1
 
         with open(read_file_name, 'rb') as read_file:
@@ -40,8 +40,8 @@ class SparsePointLoader(Dataset):
 
         self.len = len(self.data)
 
-    def fixed_rescale_crop(self, image, center=True):
-        w, h, c = image.shape
+    def fixed_rescale_crop(self, image):
+        h, w, c = image.shape
         center = not self.train
         if w > h:
             oh = self.crop_size
@@ -50,17 +50,17 @@ class SparsePointLoader(Dataset):
             ow = self.crop_size
             oh = int(1.0 * h * ow / w)
 
-        img = cv2.resize(image, (oh, ow), cv2.INTER_CUBIC)
-        w, h, _ = img.shape
+        img = cv2.resize(image, (ow, oh), cv2.INTER_CUBIC)
+        h, w, _ = img.shape
         if center:
             x1 = int(round((w - self.crop_size) / 2.))
             y1 = int(round((h - self.crop_size) / 2.))
         else:
             x1 = random.randint(0, w - self.crop_size)
             y1 = random.randint(0, h - self.crop_size)
-        img = img[x1: x1 + self.crop_size, y1: y1 + self.crop_size, :]
+        img = img[y1: y1 + self.crop_size, x1: x1 + self.crop_size, :]
 
-        return img, (ow, oh), (x1, y1)
+        return img, (oh, ow), (y1, x1)
 
     def __getitem__(self, index):
         """
@@ -75,24 +75,39 @@ class SparsePointLoader(Dataset):
         internal_file_loc = data_point['file_name']
 
         image = cv2.imread(filename=os.path.join(self.parent_dir, internal_file_loc))
-        w, h, c = image.shape
-        xy_loc = data_point['xy'][:, [1, 0]]
-        point_len, _ = xy_loc.shape
-        noc_points = data_point['noc']
+        h, w, c = image.shape
+        yx_loc = data_point['points']['yx']
+        point_len, _ = yx_loc.shape
+        noc_points = data_point['points']['noc']
 
-        xy_loc = np.random.choice(xy_loc, (point_len * self.point_select), replace=False)
+        selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
 
-        data_dict['image'], (w_, h_), (c_w, c_h) = self.fixed_rescale_crop(image=image)
-        xy_loc = (xy_loc / [w, h] * [w_, h_] - [c_w, c_h]).astype('int')
+        yx_loc = yx_loc[selection, :]
+        noc_points = noc_points[selection, :]
+
+        data_dict['image'], (h_, w_), (c_h, c_w) = self.fixed_rescale_crop(image=image)
+
+        yx_loc = (yx_loc * [h_, w_] / [h, w]).astype('int')
+
+        loc_selection = np.where(
+            ((c_h <= yx_loc[:, 0]) & (yx_loc[:, 0] < (c_h + self.crop_size))) & (
+                        (c_w <= yx_loc[:, 1]) & (yx_loc[:, 1] < (c_w + self.crop_size))))
+        yx_loc = yx_loc[loc_selection] - [c_h, c_w]
+
+        noc_points = noc_points[loc_selection]
 
         mask_image = np.zeros((self.crop_size, self.crop_size, 1))
-        mask_image[xy_loc[0], xy_loc[1], 0] = 1
+        mask_image[yx_loc[:, 0], yx_loc[:, 1], 0] = 1
 
-        noc_image = np.zeros((self.crop_size, self.crop_size, 3))
-        noc_image[xy_loc[0], xy_loc[1], :] = noc_points
+        noc_image = np.ones((self.crop_size, self.crop_size, 3)) * -1
+        noc_image[yx_loc[:, 0], yx_loc[:, 1], :] = noc_points
 
+        data_dict['num_points'] = torch.from_numpy(np.array(yx_loc.shape[0]))
         data_dict['mask_image'] = torch.from_numpy(mask_image.transpose([2, 0, 1]))
         data_dict['noc_image'] = torch.from_numpy(noc_image.transpose([2, 0, 1]))
+
+        # data_dict['noc_points'] = torch.from_numpy(noc_points)
+        # data_dict['yx_loc'] = yx_loc
 
         data_dict['image'] = self.transform(data_dict['image'])
 

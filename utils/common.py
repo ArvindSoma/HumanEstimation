@@ -1,7 +1,7 @@
 """
 Commonly used functions
 """
-
+import numpy as np
 import torch
 from torchvision import utils
 
