@@ -36,11 +36,14 @@ def main(opt):
     if not os.path.exists(save_annotation_file):
         os.mkdir(save_annotation_file)
     annotation_dict = {'minival': [COCO(coco_folder + '/annotations/densepose_coco_2014_minival.json'),
+                                   COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
                                    'val2014'],
-                       'train': [COCO(coco_folder + '/annotations/densepose_coco_2014_train.json'),
-                                 'train2014'],
                        'valminusminival': [COCO(coco_folder + '/annotations/densepose_coco_2014_valminusminival.json'),
+                                           COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
                                            'val2014'],
+                       'train': [COCO(coco_folder + '/annotations/densepose_coco_2014_train.json'),
+                                 COCO(coco_folder + '/annotations/person_keypoints_train2014.json'),
+                                 'train2014'],
                        'test': [COCO(coco_folder + '/annotations/densepose_coco_2014_test.json'),
                                 'test2014']}
 
@@ -55,7 +58,11 @@ def main(opt):
     uv = smpl['uv']
     uv_vertices = (uv * 2) - 1
     # with open('../3d_data/nongrey_male_0110.jpg', 'rb') as file:
-    texture = cv2.imread('../3d_data/nongrey_male_0110.jpg')
+    # texture = cv2.imread('../3d_data/nongrey_male_0110.jpg')
+
+    seg_path = os.path.join(coco_folder, 'background')
+    if not os.path.exists(seg_path):
+        os.mkdir(seg_path)
 
     output = model(return_verts=True)
     vertices = output.vertices.detach().cpu().numpy().squeeze()
@@ -74,6 +81,8 @@ def main(opt):
     aggregate_textures = np.array([], dtype='float64').reshape((0, 3, opt.image_height, opt.image_width))
 
     uv_render = Render(width=opt.image_width, height=opt.image_height)
+
+    kernel = np.ones((3, 3), np.uint8)
 
     for idx in range(1, 25):
         # face_select = faces[uv_faceid[:, 0] == idx, :]
@@ -96,13 +105,20 @@ def main(opt):
 
     for key in annotation_dict:
         dp_coco = annotation_dict[key][0]
-        parent_dir = annotation_dict[key][1]
+        person_coco = annotation_dict[key][1]
+        parent_dir = annotation_dict[key][2]
+
+        seg_key_path = os.path.join(seg_path, parent_dir)
+        if not os.path.exists(seg_key_path):
+            os.mkdir(seg_key_path)
+
         im_ids = dp_coco.getImgIds()
         # len_ids = len(im_ids)
         key_list = []
         for idx, im_id in enumerate(tqdm(im_ids, desc="Key [{}] Progress".format(key), ncols=100)):
             im_dict = {}
             im = dp_coco.loadImgs(im_id)[0]
+            person_im = person_coco.loadImgs(im_id)[0]
             im_name = os.path.join(coco_folder, parent_dir, im['file_name'])
             image = cv2.imread(im_name)
             # im_dict['image'] = image
@@ -111,9 +127,12 @@ def main(opt):
 
             ann_ids = dp_coco.getAnnIds(imgIds=im['id'])
             anns = dp_coco.loadAnns(ann_ids)
+            person_anns = person_coco.loadAnns(ann_ids)
 
             im_dict['points'] = {}
             zero_im = np.zeros((image.shape[0], image.shape[1]))
+
+            person_seg = np.zeros((image.shape[0], image.shape[1]))
             point_dict = im_dict['points']
             point_dict['yx'] = np.array([], dtype='int').reshape((0, 2))
             point_dict['iuv'] = np.array([]).reshape((0, 3))
@@ -121,6 +140,9 @@ def main(opt):
             xy_mask = np.zeros((image.shape[0], image.shape[1], 1))
             zero_point_iuv = np.zeros_like(image)
             zero_point_uv = np.zeros((24, image.shape[0], image.shape[1], 2))
+
+            for person_ann in person_anns:
+                person_seg += person_coco.annToMask(person_ann)
 
             for ann in anns:
 
@@ -164,13 +186,22 @@ def main(opt):
 
             output_noc = output_noc[0].cpu().numpy().transpose([1, 2, 0])
 
+            zero_im = zero_im + person_seg
+
+            zero_im = (zero_im > 0).astype('float32')
+            zero_im = cv2.dilate(zero_im, kernel, iterations=1)
+
+            cv2.imwrite(os.path.join(seg_key_path,  im['file_name']), (zero_im == 0.0).astype('uint8'))
+
             point_dict['noc'] = output_noc[point_dict['yx'][:, 0], point_dict['yx'][:, 1], :]
             # print(np.min(point_dict['yx']))
             key_list.append(im_dict)
 
             # cv2.imshow("Image", image)
+            # cv2.imshow("Background Image", (zero_im == 0.0).astype('uint8') * 255)
             # cv2.imshow("IUV", (zero_point_iuv * 30).astype('uint8'))
             # cv2.imshow("NOC sampled", (output_noc * 255).astype('uint8'))
+            #
             # cv2.waitKey(0)
 
             # progress_bar(idx + 1, len_ids, prefix="Progress for {}:".format(key), suffix="Complete")

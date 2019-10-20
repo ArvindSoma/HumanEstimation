@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import time
 import cv2
 import torch
 import random
@@ -15,9 +16,12 @@ class SparsePointLoader(Dataset):
                  parent_dir='',
                  base_size=None,
                  crop_size=256,
-                 point_select=0.8,
+                 point_select=1,
                  flip=True,
-                 transform=transforms.Compose([transforms.ToTensor()])):
+                 transform=transforms.Compose([
+                     transforms.ToTensor()])):
+        # ,
+        #                      transforms.Normalize(mean=(0, 0, 0), std=(0.5, 0.5, 0.5))
 
         self.parent_dir = parent_dir
         self.base_size = base_size
@@ -27,12 +31,13 @@ class SparsePointLoader(Dataset):
         self.point_select = point_select
         self.train = train
         self.transform = transform
+        self.max_pad = 1200
 
         if self.train:
             read_file_name = '../data/dp_annotation/train.pkl'
 
         else:
-            read_file_name = '../data/dp_annotation/minival.pkl'  # 'valminus'
+            read_file_name = '../data/dp_annotation/valminusminival.pkl'  # 'valminusminival'
             self.point_select = 1
 
         with open(read_file_name, 'rb') as read_file:
@@ -40,9 +45,10 @@ class SparsePointLoader(Dataset):
 
         self.len = len(self.data)
 
-    def fixed_rescale_crop(self, image):
+    def fixed_rescale_crop(self, image, background):
         h, w, c = image.shape
         center = not self.train
+        # center = True
         if w > h:
             oh = self.crop_size
             ow = int(1.0 * w * oh / h)
@@ -51,6 +57,7 @@ class SparsePointLoader(Dataset):
             oh = int(1.0 * h * ow / w)
 
         img = cv2.resize(image, (ow, oh), cv2.INTER_CUBIC)
+        background = cv2.resize(background, (ow, oh), cv2.INTER_NEAREST)
         h, w, _ = img.shape
         if center:
             x1 = int(round((w - self.crop_size) / 2.))
@@ -59,8 +66,9 @@ class SparsePointLoader(Dataset):
             x1 = random.randint(0, w - self.crop_size)
             y1 = random.randint(0, h - self.crop_size)
         img = img[y1: y1 + self.crop_size, x1: x1 + self.crop_size, :]
+        background = background[y1: y1 + self.crop_size, x1: x1 + self.crop_size, :]
 
-        return img, (oh, ow), (y1, x1)
+        return img, background, (oh, ow), (y1, x1)
 
     def __getitem__(self, index):
         """
@@ -80,12 +88,19 @@ class SparsePointLoader(Dataset):
         point_len, _ = yx_loc.shape
         noc_points = data_point['points']['noc']
 
-        selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
+        background = cv2.imread(filename=os.path.join(self.parent_dir, 'background', internal_file_loc))
+        # print(background[:, :, 0] == )
 
-        yx_loc = yx_loc[selection, :]
-        noc_points = noc_points[selection, :]
 
-        data_dict['image'], (h_, w_), (c_h, c_w) = self.fixed_rescale_crop(image=image)
+        # np.random.seed(int(time.time()))
+        # selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
+        #
+        # yx_loc = yx_loc[selection, :]
+        # noc_points = noc_points[selection, :]
+
+        data_dict['image'], background, (h_, w_), (c_h, c_w) = self.fixed_rescale_crop(image=image,
+                                                                                       background=background)
+        data_dict['background'] = torch.from_numpy((background.transpose([2, 0, 1]) > 0).astype('float32'))
 
         yx_loc = (yx_loc * [h_, w_] / [h, w]).astype('int')
 
@@ -101,13 +116,21 @@ class SparsePointLoader(Dataset):
 
         noc_image = np.ones((self.crop_size, self.crop_size, 3)) * -1
         noc_image[yx_loc[:, 0], yx_loc[:, 1], :] = noc_points
-
-        data_dict['num_points'] = torch.from_numpy(np.array(yx_loc.shape[0]))
+        num_points = np.array(yx_loc.shape[0])
+        # num_points[num_points == 0] = 1
+        data_dict['num_points'] = torch.from_numpy(num_points)
         data_dict['mask_image'] = torch.from_numpy(mask_image.transpose([2, 0, 1]))
         data_dict['noc_image'] = torch.from_numpy(noc_image.transpose([2, 0, 1]))
 
-        # data_dict['noc_points'] = torch.from_numpy(noc_points)
-        # data_dict['yx_loc'] = yx_loc
+        total_pad = self.max_pad - num_points
+
+        pad_width = ((0, total_pad), (0, 0))
+
+        noc_points = np.pad(noc_points, pad_width=pad_width, mode='constant', constant_values=0)
+        yx_loc = np.pad(yx_loc, pad_width=pad_width, mode='constant', constant_values=0)
+
+        data_dict['noc_points'] = torch.from_numpy(noc_points)
+        data_dict['yx_loc'] = yx_loc
 
         data_dict['image'] = self.transform(data_dict['image'])
 
@@ -115,3 +138,4 @@ class SparsePointLoader(Dataset):
 
     def __len__(self):
         return self.len
+        # return 1

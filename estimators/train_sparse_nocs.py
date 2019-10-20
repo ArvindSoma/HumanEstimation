@@ -40,9 +40,9 @@ def main(opt):
                          SummaryWriter(os.path.join(opt.log_dir, 'test')))
 
     train_loader = SparsePointLoader(train=True, parent_dir=coco_parent_dir)
-    train_loader = DataLoader(train_loader, batch_size=opt.batch_size, shuffle=True, num_workers=4)
+    train_loader = DataLoader(train_loader, batch_size=opt.batch_size, shuffle=True, num_workers=2)
     test_loader = SparsePointLoader(train=False, parent_dir=coco_parent_dir)
-    test_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=4)
+    test_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
 
     data_loader = namedtuple('data_loader', ('train', 'test'))
     data_loader = data_loader(train_loader, test_loader)
@@ -53,9 +53,9 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_trial_1',
-                      '--log_iter=500',
+    opt = parse_args(['--log_dir=../data/logs/sparse_trial_ResNet_UpSample_Dropout3',
+                      '--log_iter=200',
                       '--batch_size=8',
-                      '--epochs=5'])
+                      '--epochs=100'])
     main(opt=opt)
 

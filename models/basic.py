@@ -10,12 +10,18 @@ from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 from collections import namedtuple
 
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+
+
 class ConvLayer(nn.Module):
-    def __init__(self, in_ch, out_ch, filter=4, stride=1, dilation=1, pad=1, bn=None):
+    def __init__(self, in_ch, out_ch, filter=4, stride=1, dilation=1, pad=1, norm=None):
         super(ConvLayer, self).__init__()
         seq1 = [nn.Conv2d(in_ch, out_ch, filter, stride=stride, padding=pad, dilation=dilation)]
-        if bn is not None:
-            seq1 += [bn(out_ch)]
+        if norm is not None:
+            seq1 += [norm(out_ch)]
         # else:
         #     raise Exception('Normalization not declared!')
 
@@ -27,40 +33,34 @@ class ConvLayer(nn.Module):
 
 
 class UpConvLayer(nn.Module):
-    def __init__(self, in_ch, out_ch, size, stride=1, bn=None, dropout=False, skip=True):
+    def __init__(self, in_ch, out_ch, stride=1, norm=None, dropout=False, skip=True):
         super(UpConvLayer, self).__init__()
+
+        if skip:
+            in_ch = in_ch * 2
+
         seq1 = [nn.Sequential(nn.ConvTranspose2d(in_ch, out_ch, 4, stride=stride, padding=1))]
-        if bn is not None:
-            seq1 += [bn(out_ch)]
+        if norm is not None:
+            seq1 += [norm(out_ch)]
 
         self.sequence1 = nn.Sequential(*seq1)
 
         self.leaky_relu = nn.LeakyReLU(0.2)
-        seq2 = []
-        if skip:
-            for idx in range(2):
-                seq2 += [ConvLayer(out_ch * 2, out_ch * 2, filter=3, bn=bn)]
-                if idx == 0:
-                    seq2 += [nn.LeakyReLU()]
 
-        else:
-            for idx in range(2):
-                seq2 += [ConvLayer(out_ch, out_ch, filter=3, bn=bn)]
-                if idx == 0:
-                    seq2 += [nn.LeakyReLU()]
-
-        self.sequence2 = nn.Sequential(*seq2)
+        self.sequence2 = MultiDilation(dim_out=out_ch)
         self.dropout = dropout
 
     def forward(self, x, skip_net=None):
 
-        net = self.sequence1(x)
+        net = x
+
+        if skip_net is not None:
+            net = torch.cat([net, skip_net], 1)
+
+        net = self.sequence1(net)
 
         if self.dropout:
             net = F.dropout(net, 0.2)
-
-        if skip_net is not None:
-            net = torch.cat([net, self.skip_net], 1)
 
         net = self.sequence2(self.leaky_relu(net))
 
@@ -75,9 +75,9 @@ class MultiDilation(nn.Module):
         dil = dilation
         # for dil in range(1, dilation + 1):
         self.seq = nn.Sequential(
-            ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, bn=norm_layer),
+            ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, norm=norm_layer),
             nn.LeakyReLU(0.2),
-            ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, bn=norm_layer),
+            ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, norm=norm_layer),
         )
             # self.modules.append(seq)
 
@@ -124,11 +124,25 @@ class ResNext50(nn.Module):
         return out_1
 
 
-class ResNet18(nn.Module):
+class ResNet18FPN(nn.Module):
 
     def __init__(self):
-        super(ResNet18, self).__init__()
+        super(ResNet18FPN, self).__init__()
         self.resnet18_fpn = resnet_fpn_backbone(backbone_name='resnet18', pretrained=True)
 
     def forward(self, x):
         return self.resnet18_fpn(x)
+
+
+class ResNet18Features(nn.Module):
+
+    def __init__(self, final_layer=-3):
+        super(ResNet18Features, self).__init__()
+        model = torchvision.models.resnet18(pretrained=True)
+        for param in model.parameters():
+            param.requires_grad = False
+        model = nn.Sequential(*model.children())
+        self.model = model[:final_layer]
+
+    def forward(self, x):
+        return self.model(x)
