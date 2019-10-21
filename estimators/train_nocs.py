@@ -1,10 +1,7 @@
 """
 Train NOC class
 """
-
-import torch.nn as nn
-import tensorboardX
-from collections import namedtuple
+import os
 from recordclass import recordclass
 from torchstat import stat
 
@@ -16,9 +13,15 @@ def visualize(batch, output, writer, name, niter):
     writer.add_scalar('L1-Loss', output[1].total_loss, niter)
     writer.add_scalar('NOC-Loss', output[1].NOC_loss, niter)
     writer.add_scalar('Background-Loss', output[1].background_loss, niter)
-    write_image(writer, name="{}/Output".format(name), sample=(output[0] * 2) - 1, niter=niter)
+    write_image(writer, name="{}/Output_NOC".format(name), sample=(output[0][1] * 2) - 1, niter=niter)
+    write_image(writer, name="{}/Output_Foreground".format(name),
+                sample=((torch.softmax(output[0][0], 1)[:, 1:2, :, :] > 0.5).long() * 2) - 1, niter=niter)
+    final_noc = output[0][1] * (torch.softmax(output[0][0], 1)[:, 1:2, :, :] > 0.5).float()
+    write_image(writer, name="{}/Output_Final_NOC".format(name), sample=(final_noc * 2) - 1, niter=niter)
     write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
-    write_image(writer, name="{}/Ground Truth".format(name), sample=batch['noc_image'], niter=niter)
+    write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
+    write_image(writer, name="{}/Ground Truth Foreground".format(name),
+                sample=((1 - batch['background']).long() * 2 - 1), niter=niter)
     return True
 
 
@@ -46,7 +49,8 @@ class TrainNOCs:
         # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
         #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
         #                              last_layer=nn.LeakyReLU(0.2))
-        self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
+        # self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
+        self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
         # self.seg_net = ResUnetGenerator(output_nc=3)
 
         # self.seg_net.apply(init_weights)
@@ -54,10 +58,12 @@ class TrainNOCs:
 
         self.sparse_l1 = torch.nn.SmoothL1Loss(reduction='none')
         self.l1 = torch.nn.SmoothL1Loss()
+        self.bce = torch.nn.BCEWithLogitsLoss()
         self.seg_net.cuda()
 
         self.sparse_l1.cuda()
         self.l1.cuda()
+        self.bce.cuda()
         self.seg_net.train()
 
         self.criterion_selection = None
@@ -69,6 +75,8 @@ class TrainNOCs:
         #
         # self.loss = 0
 
+        self.forward = self.forward_2_heads
+
         self.mean = mean
         self.std = std
 
@@ -76,11 +84,8 @@ class TrainNOCs:
 
         self.un_norm = UnNormalize(mean=self.mean, std=self.std)
 
-    def criterion_l1(self, output, target, num_points):
-        batch_size = num_points.shape[0]
-        total_points = torch.sum(num_points)
-        # print(self.sparse_l1(output, target), total_points) + 1 * (total_points == 0).float()
-        return self.sparse_l1(output, target) / (total_points * 3 * batch_size)
+    def criterion_2_heads(self, output, batch):
+        return True
 
     def criterion_l1_sparse(self, output, batch):
         batch_size = batch['num_points'].shape[0]
@@ -117,8 +122,22 @@ class TrainNOCs:
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss, background_loss=background_loss)
         return output, losses
 
+    def forward_2_heads(self, batch):
+        total_loss = 0
+        output = self.seg_net(batch['image'])
+        masked_output = output[1] * (batch['mask_image'] > 0).float()
+        noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch) * 5
+        total_loss += noc_loss
+        # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
+        foreground = (1 - batch['background'][:, 0:2, :, :]).float()
+        foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
+        background_loss = self.bce(input=output[0], target=foreground)
+        total_loss += background_loss
+        losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss, background_loss=background_loss)
+        return output, losses
+
     def train(self, batch):
-        output, losses = self.forward_sparse(batch=batch)
+        output, losses = self.forward(batch=batch)
         # output = self.seg_net(batch['image'])
         #
         # # if 'mask_image' in batch.keys():
@@ -142,7 +161,7 @@ class TrainNOCs:
                 for keys in batch:
                     batch[keys] = batch[keys].float().cuda()
                 # batch['image'] = batch['image'] * 2 - 1
-                output, losses = self.forward_sparse(batch=batch)
+                output, losses = self.forward(batch=batch)
 
                 for jdx, val in enumerate(losses):
                     total_losses[jdx] += losses[jdx].item()
@@ -201,6 +220,11 @@ class TrainNOCs:
                                                                                     total_losses.total_loss))
 
                 batch['image'] = batch['image'] * 2 - 1
+
+                torch.save({'epoch': epoch,
+                            'model': self.seg_net,
+                            'optimizer': self.optimizer},
+                           os.path.join("../saves", os.path.basename(opt.log_dir) + '_{}.pth'.format(epoch)))
                 # visualize(writer=writer.train, batch=batch, output=(output, total_losses),
                 #           name="Train Total", niter=(epoch + 1) * data_length)
 

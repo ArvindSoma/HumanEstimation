@@ -11,6 +11,56 @@ class PoseNet(nn.Module):
         super(PoseNet, self).__init__()
 
 
+class ResNet2HeadGenerator(nn.Module):
+    def __init__(self, latent=ResNet18Features(), out_channels=3, norm=nn.BatchNorm2d,
+                 last_layer=nn.LeakyReLU(0.2, inplace=True)):
+        super(ResNet2HeadGenerator, self).__init__()
+
+        model = [latent]
+        in_ch = 256
+        out_ch = in_ch // 2
+        dropout = False
+        for idx in range(3):
+            if idx == 2:
+                dropout = True
+            # else:
+            #     dropout = False
+            model += [nn.LeakyReLU(0.2, inplace=True),
+                      UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, dropout=dropout, skip=False, norm=norm),
+                      ]
+            # if idx < 2:
+            #     model += [MultiDilation(dim_out=out_ch, dilation=1)]
+            in_ch = out_ch
+            out_ch = in_ch // 2
+
+        self.model = nn.Sequential(*model)
+
+        self.output_list = nn.ModuleList()
+        for idx in range(2):
+            if idx is 0:
+                out_ch = 2
+            else:
+                out_ch = out_channels
+
+            seq = [
+                nn.LeakyReLU(0.2),
+                UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, dropout=dropout, skip=False, norm=None),
+                nn.LeakyReLU(0.2),
+                MultiDilation(dim_out=out_ch, dilation=1, norm_layer=None)
+            ]
+            if idx == 1:
+                seq += [last_layer]
+            self.output_list.append(nn.Sequential(*seq))
+
+    def forward(self, x):
+        net = self.model(x)
+        outputs = []
+        for idx in range(2):
+            outputs.append(self.output_list[idx](net))
+
+        return outputs
+
+
 class ResNetGenerator(nn.Module):
     def __init__(self, latent=ResNet18Features(), out_channels=3, norm=nn.BatchNorm2d,
                  last_layer=nn.LeakyReLU(0.2, inplace=True)):
