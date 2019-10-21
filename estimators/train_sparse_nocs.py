@@ -31,7 +31,7 @@ def parse_args(args):
 
 def main(opt):
 
-    noc_trained = TrainNOCs()
+    noc_trained = TrainNOCs(save_dir=os.path.basename(opt.log_dir))
 
     coco_parent_dir = os.environ['COCO']
 

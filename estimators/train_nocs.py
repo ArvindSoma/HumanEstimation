@@ -44,7 +44,7 @@ class UnNormalize(object):
 
 
 class TrainNOCs:
-    def __init__(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=7, lr=5e-4, betas=(0.5, 0.999)):
+    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=7, lr=5e-4, betas=(0.5, 0.999)):
 
         # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
         #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
@@ -71,9 +71,8 @@ class TrainNOCs:
         self.lr = lr
         self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr)
         # self.optimizer = torch.optim.SGD(params=self.seg_net.parameters(), lr=lr, momentum=0.5)
-        # self.iter = 0
-        #
-        # self.loss = 0
+
+        self.save_path = os.path.join("../saves", save_dir)
 
         self.forward = self.forward_2_heads
 
@@ -224,7 +223,7 @@ class TrainNOCs:
                 torch.save({'epoch': epoch,
                             'model': self.seg_net,
                             'optimizer': self.optimizer},
-                           os.path.join("../saves", os.path.basename(opt.log_dir) + '_{}.pth'.format(epoch)))
+                           os.path.join(self.save_path, 'save_{}.pth'.format(epoch)))
                 # visualize(writer=writer.train, batch=batch, output=(output, total_losses),
                 #           name="Train Total", niter=(epoch + 1) * data_length)
 
