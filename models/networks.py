@@ -44,8 +44,10 @@ class ResNet2HeadGenerator(nn.Module):
 
             seq = [
                 nn.LeakyReLU(0.2),
+                nn.Dropout2d(0.2),
                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, dropout=dropout, skip=False, norm=None),
                 nn.LeakyReLU(0.2),
+                nn.Dropout2d(0.2),
                 MultiDilation(dim_out=out_ch, dilation=1, norm_layer=None)
             ]
             if idx == 1:
@@ -143,10 +145,10 @@ class Unet2HeadGenerator(nn.Module):
 
             seq = [
                 nn.LeakyReLU(0.2),
-                nn.Dropout(0.2),
+                nn.Dropout2d(0.2),
                 ConvLayer(in_ch=16, out_ch=out_ch, norm=norm_layer, filter=3, stride=1, pad=1),
                 nn.LeakyReLU(0.2),
-                nn.Dropout(0.2),
+                nn.Dropout2d(0.2),
                 MultiDilation(dim_out=out_ch, dilation=1, norm_layer=None)
             ]
             if idx == 1:

@@ -31,7 +31,8 @@ def parse_args(args):
 
 def main(opt):
 
-    noc_trained = TrainNOCs(save_dir=os.path.basename(opt.log_dir), checkpoint=opt.checkpoint)
+    noc_trained = TrainNOCs(batch_size=opt.batch_size, save_dir=os.path.basename(opt.log_dir),
+                            checkpoint=opt.checkpoint)
 
     coco_parent_dir = os.environ['COCO']
 
@@ -39,7 +40,9 @@ def main(opt):
     test_loader = SparsePointLoader(train=False, parent_dir=coco_parent_dir)
     data_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
 
-    noc_trained.test(test_loader=data_loader, test_writer=main_writer, niter=0)
+    ply_save = '../3d_data/{}'.format(os.path.split(os.path.split(opt.checkpoint)[0])[1])
+
+    noc_trained.test(test_loader=data_loader, test_writer=main_writer, niter=0, write_ply=True, ply_dir=ply_save)
 
     return True
 
@@ -48,6 +51,6 @@ if __name__ == "__main__":
     opt = parse_args(['--log_dir=../data/logs/sparse_test_UNet_Dropout_2Heads',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads/save_3304.pth'])
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads/save_9914.pth'])
     main(opt=opt)
 

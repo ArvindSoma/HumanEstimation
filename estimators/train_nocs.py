@@ -2,9 +2,10 @@
 Train NOC class
 """
 import os
+import cv2
 from recordclass import recordclass
 from torchstat import stat
-
+from math import log10
 from models.networks import *
 from utils.common import *
 
@@ -45,7 +46,7 @@ class UnNormalize(object):
 
 class TrainNOCs:
     def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=5e-4,
-                 betas=(0.5, 0.999), checkpoint=None):
+                 betas=(0.5, 0.999), batch_size=8, checkpoint=None):
 
         # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
         #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
@@ -62,6 +63,7 @@ class TrainNOCs:
 
         self.sparse_l1 = torch.nn.SmoothL1Loss(reduction='none')
         self.l1 = torch.nn.SmoothL1Loss()
+        self.l2 = torch.nn.MSELoss()
         self.bce = torch.nn.BCEWithLogitsLoss()
         self.seg_net.cuda()
 
@@ -85,16 +87,41 @@ class TrainNOCs:
             os.mkdir(self.save_path)
 
         self.forward = self.forward_2_heads
-
+        self.batch_size = batch_size
         self.mean = mean
         self.std = std
 
-        self.loss_tuple = recordclass('losses', ('total_loss', 'NOC_loss', 'background_loss'))
+        self.loss_tuple = recordclass('losses', ('total_loss', 'NOC_loss', 'background_loss', 'NOC_mse'))
+
+        self.ply_start = '''ply
+format ascii 1.0
+element vertex {}
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header\n'''
 
         self.un_norm = UnNormalize(mean=self.mean, std=self.std)
 
-    def criterion_2_heads(self, output, batch):
-        return True
+    def criterion_mse(self, output, batch):
+        batch_size = batch['num_points'].shape[0]
+
+        batch['num_points'] = batch['num_points'].long()
+        num = batch['num_points'].view(batch_size, 1)
+        batch['yx_loc'] = batch['yx_loc'].long()
+        sub = 0
+        for idx in range(batch_size):
+            if num[idx, 0] == 0:
+                batch_size -= 1
+                continue
+            sub += self.l2(output[idx, :, batch['yx_loc'][idx, :num[idx, 0], 0], batch['yx_loc'][idx, :num[idx, 0], 1]],
+                           batch['noc_image'][idx, :, batch['yx_loc'][idx, :num[idx, 0], 0],
+                           batch['yx_loc'][idx, :num[idx, 0], 1]])
+
+        return sub / batch_size
 
     def criterion_l1_sparse(self, output, batch):
         batch_size = batch['num_points'].shape[0]
@@ -128,7 +155,9 @@ class TrainNOCs:
         background_target = torch.zeros_like(output)
         background_loss = self.l1(output * batch['background'], background_target)
         total_loss += background_loss
-        losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss, background_loss=background_loss)
+        mse = self.criterion_mse(output=output, batch=batch)
+        losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
+                                 background_loss=background_loss, NOC_mse=mse)
         return output, losses
 
     def forward_2_heads(self, batch):
@@ -142,7 +171,9 @@ class TrainNOCs:
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
         background_loss = self.bce(input=output[0], target=foreground)
         total_loss += background_loss
-        losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss, background_loss=background_loss)
+        mse = self.criterion_mse(output=output[1], batch=batch)
+        losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
+                                 background_loss=background_loss, NOC_mse=mse)
         return output, losses
 
     def train(self, batch):
@@ -161,38 +192,78 @@ class TrainNOCs:
 
         return output, losses
 
-    def test(self, test_loader, niter, test_writer):
-        total_losses = self.loss_tuple(0, 0, 0)
+    def write_noc_ply(self, output, batch, idx, ply_dir):
 
+        batch_size = batch['num_points'].shape[0]
+        idx = idx * self.batch_size
+        # masked_output = output[1] * (batch['mask_image'] > 0).float()
+        batch['num_points'] = batch['num_points'].long()
+        num = batch['num_points'].view(batch_size, 1)
+        for pdx in range(batch_size):
+            image = batch['image'][pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
+            output_arr = output[1][pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
+            noc_gt = batch['noc_points'][pdx, :num[pdx, 0]].cpu().numpy()
+            image = image.cpu().numpy().T
+            image = image[:, [2, 1, 0]] * 255
+            output_arr = output_arr.cpu().numpy().T
+
+            start = self.ply_start.format(num[pdx, 0].item())
+            concatenated_out = np.concatenate((output_arr, image), axis=1)
+            concatenated_gt = np.concatenate((noc_gt, image), axis=1)
+            image = batch['image'][pdx, :, :, :].cpu().numpy()
+            image = image.transpose(1, 2, 0) * 255
+            cv2.imwrite(os.path.join(ply_dir, 'Output_{}.png'.format(idx + pdx)), image.astype('uint8'))
+            with open(os.path.join(ply_dir, 'Output_{}.ply'.format(idx + pdx)), 'a') as write_file:
+                write_file.write(start)
+                np.savetxt(write_file, concatenated_out, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
+
+            with open(os.path.join(ply_dir, 'Ground_truth_{}.ply'.format(idx + pdx)), 'a') as write_file:
+                write_file.write(start)
+                np.savetxt(write_file, concatenated_gt, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
+
+    def test(self, test_loader, niter, test_writer, write_ply=False, ply_dir=''):
+        total_losses = self.loss_tuple(0, 0, 0, 0)
+        if write_ply:
+            if not os.path.exists(ply_dir):
+                os.mkdir(ply_dir)
         with torch.no_grad():
             self.seg_net.eval()
             for idx, batch in enumerate(test_loader):
                 for keys in batch:
                     batch[keys] = batch[keys].float().cuda()
-                # batch['image'] = batch['image'] * 2 - 1
+
                 output, losses = self.forward(batch=batch)
 
-                # masked_output = output[1] * (batch['mask_image'] > 0).float()
+                #  View NOC as PLY
+                if write_ply:
+                    self.write_noc_ply(output=output, batch=batch, idx=idx, ply_dir=ply_dir)
 
                 for jdx, val in enumerate(losses):
-                    total_losses[jdx] += losses[jdx].item()
+                    if jdx is 3:
+                        total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
+                    else:
+                        total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
 
                 if idx == (len(test_loader) - 1):
                     # print(len(test_loader))
                     for jdx, val in enumerate(total_losses):
+
                         total_losses[jdx] /= len(test_loader)
+
+
                     print("Validation loss: {}".format(total_losses.total_loss))
 
                     # batch['image'] = self.un_norm(batch['image'])
                     batch['image'] = batch['image'] * 2 - 1
 
+                    test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
                               name="Validation", niter=niter)
 
     def run(self, opt, data_loader, writer, epoch=0):
 
-        total_losses = self.loss_tuple(0, 0, 0)
+        total_losses = self.loss_tuple(0, 0, 0, 0)
         data_length = len(data_loader.train)
 
         self.seg_net.train()
@@ -209,7 +280,10 @@ class TrainNOCs:
 
             # print(batch['num_points'], torch.sum(batch['num_points']))
             for jdx, val in enumerate(losses):
-                total_losses[jdx] += losses[jdx].item()
+                if jdx is 3:
+                    total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
+                else:
+                    total_losses[jdx] += losses[jdx].item()
             # total_loss += loss.item()
             niter = idx + (epoch * data_length)
             if idx % opt.log_iter == 0:
@@ -220,10 +294,9 @@ class TrainNOCs:
                           name="Train Total", niter=niter)
 
                 # batch['image'] = self.un_norm(batch['image'])
-
-
                 # visualize(writer=writer.train, batch=batch, output=(output, loss),
                 #           name="Train", niter=niter)
+            # Last Iteration
             if idx == (data_length - 1):
                 for jdx, val in enumerate(total_losses):
                     total_losses[jdx] /= data_length
@@ -231,7 +304,7 @@ class TrainNOCs:
                                                                                     total_losses.total_loss))
 
                 batch['image'] = batch['image'] * 2 - 1
-
+                writer.train.add_scalar('PSNR', total_losses.NOC_mse, niter)
                 torch.save({'epoch': epoch,
                             'model': self.seg_net.state_dict(),
                             'optimizer': self.optimizer.state_dict()},
