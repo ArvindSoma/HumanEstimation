@@ -76,7 +76,7 @@ class TrainNOCs:
         self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr)
         # self.optimizer = torch.optim.SGD(params=self.seg_net.parameters(), lr=lr, momentum=0.5)
         if checkpoint is not None:
-            # checkpoint = torch.load(checkpoint)
+            checkpoint = torch.load(checkpoint)
             self.seg_net.load_state_dict(checkpoint['model'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
 
@@ -233,8 +233,8 @@ class TrainNOCs:
                 batch['image'] = batch['image'] * 2 - 1
 
                 torch.save({'epoch': epoch,
-                            'model': self.seg_net,
-                            'optimizer': self.optimizer},
+                            'model': self.seg_net.state_dict(),
+                            'optimizer': self.optimizer.state_dict()},
                            os.path.join(self.save_path, 'save_{}.pth'.format(niter)))
                 # visualize(writer=writer.train, batch=batch, output=(output, total_losses),
                 #           name="Train Total", niter=(epoch + 1) * data_length)

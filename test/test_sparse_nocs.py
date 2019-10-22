@@ -25,13 +25,13 @@ def parse_args(args):
     parser.add_argument('--log_dir', type=str, default='../data/logs', help='log directory')
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
-    parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
+    parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
     return parser.parse_args(args)
 
 
 def main(opt):
 
-    noc_trained = TrainNOCs(save_dir=os.path.basename(opt.log_dir))
+    noc_trained = TrainNOCs(save_dir=os.path.basename(opt.log_dir), checkpoint=opt.checkpoint)
 
     coco_parent_dir = os.environ['COCO']
 
@@ -45,9 +45,9 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_trial_UNet_Dropout_2Heads',
+    opt = parse_args(['--log_dir=../data/logs/sparse_test_UNet_Dropout_2Heads',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--epochs=100'])
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads/save_3304.pth'])
     main(opt=opt)
 
