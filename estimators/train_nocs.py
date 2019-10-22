@@ -44,11 +44,15 @@ class UnNormalize(object):
 
 
 class TrainNOCs:
-    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=7, lr=5e-4, betas=(0.5, 0.999)):
+    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=5e-4,
+                 betas=(0.5, 0.999), checkpoint=None):
 
         # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
         #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
         #                              last_layer=nn.LeakyReLU(0.2))
+        # self.seg_net = Unet2HeadGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
+        #                                   use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
+        #                                   last_layer=nn.ReLU())
         # self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
         self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
         # self.seg_net = ResUnetGenerator(output_nc=3)
@@ -71,8 +75,14 @@ class TrainNOCs:
         self.lr = lr
         self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr)
         # self.optimizer = torch.optim.SGD(params=self.seg_net.parameters(), lr=lr, momentum=0.5)
+        if checkpoint is not None:
+            # checkpoint = torch.load(checkpoint)
+            self.seg_net.load_state_dict(checkpoint['model'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
 
         self.save_path = os.path.join("../saves", save_dir)
+        if not os.path.exists(self.save_path):
+            os.mkdir(self.save_path)
 
         self.forward = self.forward_2_heads
 
@@ -162,6 +172,8 @@ class TrainNOCs:
                 # batch['image'] = batch['image'] * 2 - 1
                 output, losses = self.forward(batch=batch)
 
+                # masked_output = output[1] * (batch['mask_image'] > 0).float()
+
                 for jdx, val in enumerate(losses):
                     total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
@@ -199,7 +211,7 @@ class TrainNOCs:
             for jdx, val in enumerate(losses):
                 total_losses[jdx] += losses[jdx].item()
             # total_loss += loss.item()
-            niter = (idx) + (epoch * data_length)
+            niter = idx + (epoch * data_length)
             if idx % opt.log_iter == 0:
 
                 print("Epoch: {}  |  Iteration: {}  |  Train Loss: {}".format(epoch, niter, losses.total_loss.item()))
@@ -223,7 +235,7 @@ class TrainNOCs:
                 torch.save({'epoch': epoch,
                             'model': self.seg_net,
                             'optimizer': self.optimizer},
-                           os.path.join(self.save_path, 'save_{}.pth'.format(epoch)))
+                           os.path.join(self.save_path, 'save_{}.pth'.format(niter)))
                 # visualize(writer=writer.train, batch=batch, output=(output, total_losses),
                 #           name="Train Total", niter=(epoch + 1) * data_length)
 

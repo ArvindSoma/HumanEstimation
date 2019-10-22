@@ -92,6 +92,77 @@ class ResNetGenerator(nn.Module):
         return self.model(x)
 
 
+class Unet2HeadGenerator(nn.Module):
+    """Create a Unet-based generator"""
+
+    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
+                 use_dropout=True, dilation=1, combine_resnet=None, last_layer=nn.Tanh(), block_type=1):
+        """Construct a Unet generator
+        Parameters:
+            input_nc (int)  -- the number of channels in input images
+            output_nc (int) -- the number of channels in output images
+            num_downs (int) -- the number of downsamplings in UNet. For example, # if |num_downs| == 7,
+                                image of size 128x128 will become of size 1x1 # at the bottleneck
+            ngf (int)       -- the number of filters in the last conv layer
+            norm_layer      -- normalization layer
+        We construct the U-Net from the innermost layer to the outermost layer.
+        It is a recursive process.
+        """
+        super(Unet2HeadGenerator, self).__init__()
+
+        if block_type is 2:
+            UnetSkipConnectionBlock = UnetSkipConnectionBlock2
+        else:
+            UnetSkipConnectionBlock = UnetSkipConnectionBlock1
+
+        # construct unet structure
+        unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer,
+                                             innermost=True, dilation=dilation)  # add the innermost layer
+
+        if combine_resnet:
+            unet_block += combine_resnet
+        for i in range(num_downs - 5):          # add intermediate layers with ngf * 8 filters
+            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block,
+                                                 norm_layer=norm_layer, use_dropout=use_dropout, dilation=dilation)
+        # gradually reduce the number of filters from ngf * 8 to ngf
+        unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block,
+                                             norm_layer=norm_layer, dilation=dilation)
+        unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block,
+                                             norm_layer=norm_layer, dilation=dilation)
+        unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block,
+                                             norm_layer=norm_layer, dilation=dilation)
+        self.model = UnetSkipConnectionBlock(16, ngf, input_nc=input_nc, submodule=unet_block,
+                                             outermost=outermost, norm_layer=norm_layer, last_layer=nn.LeakyReLU(0.2))  # add the outermost layer
+
+        self.output_list = nn.ModuleList()
+        for idx in range(2):
+            if idx is 0:
+                out_ch = 2
+            else:
+                out_ch = output_nc
+
+            seq = [
+                nn.LeakyReLU(0.2),
+                nn.Dropout(0.2),
+                ConvLayer(in_ch=16, out_ch=out_ch, norm=norm_layer, filter=3, stride=1, pad=1),
+                nn.LeakyReLU(0.2),
+                nn.Dropout(0.2),
+                MultiDilation(dim_out=out_ch, dilation=1, norm_layer=None)
+            ]
+            if idx == 1:
+                seq += [last_layer]
+            self.output_list.append(nn.Sequential(*seq))
+
+    def forward(self, input):
+        """Standard forward"""
+        net = self.model(input)
+        outputs = []
+        for idx in range(2):
+            outputs.append(self.output_list[idx](net))
+
+        return outputs
+
+
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
