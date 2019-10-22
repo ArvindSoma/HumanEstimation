@@ -52,6 +52,10 @@ def main(opt):
 
     smpl_render.set_render(vertices=smpl_vertices, faces=faces)
 
+    norm_vertices = smpl_render.vertices
+
+
+
     smpl_render_norm = smpl_render.render_interpolate(vertices=uv).interpolated
     
     smpl_body_uv = smpl_render_uv[:, :, :2]
@@ -126,7 +130,7 @@ if __name__ == '__main__':
     opt = parse_args([
         '--n_samples=10',
         '--camera_distance=2.8',
-        '--global_y=0.24',
+        '--global_y=0.0',
         '--focal_length=1.09375',
         '--image_width=340',
         '--image_height=340',

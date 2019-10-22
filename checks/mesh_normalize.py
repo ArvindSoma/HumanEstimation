@@ -37,8 +37,9 @@ def main(opt):
 
     # set up the rendering objects
     focal_length = opt.focal_length * opt.image_height
-    camera = pyrender.IntrinsicsCamera(focal_length, focal_length, opt.image_width / 2, opt.image_height / 2,
-                                       opt.znear, opt.zfar)
+    # camera = pyrender.IntrinsicsCamera(focal_length, focal_length, opt.image_width / 2, opt.image_height / 2,
+    #                                    opt.znear, opt.zfar)
+    camera = pyrender.OrthographicCamera(xmag=1.0, ymag=1.0, znear=0.05)
     camera_pose = np.array([
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     opt = parse_args([
         '--n_samples=10',
         '--camera_distance=2.8',
-        '--global_y=0.15',
+        '--global_y=0.0',
         '--focal_length=1.09375',
         '--image_width=340',
         '--image_height=340',

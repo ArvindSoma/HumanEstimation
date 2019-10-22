@@ -55,7 +55,7 @@ class Render:
         self.vertices = vertices
         self.faces = faces
         if normalize:
-            self.vertices -= self.tri_mesh.centroid
+            self.vertices -= self.py_scene.centroid
             bounds = self.tri_mesh.bounding_box_oriented.extents
 
             self.vertices /= bounds
