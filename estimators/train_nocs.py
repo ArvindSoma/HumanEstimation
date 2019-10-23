@@ -288,7 +288,6 @@ class TrainNOCs:
                 visualize(writer=test_writer, batch=batch, output=(output, self.loss_tuple(0, 0, 0, 0)),
                           name="Validation", niter=niter, foreground=self.foreground)
 
-
     def run(self, opt, data_loader, writer, epoch=0):
 
         total_losses = self.loss_tuple(0, 0, 0, 0)
