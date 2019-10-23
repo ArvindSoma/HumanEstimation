@@ -33,7 +33,7 @@ def parse_args(args):
 def main(opt):
 
     noc_trained = TrainNOCs(batch_size=opt.batch_size, save_dir=os.path.basename(opt.log_dir),
-                            checkpoint=opt.checkpoint, output_heads='two')
+                            checkpoint=opt.checkpoint, output_heads=opt.num_heads)
 
     coco_parent_dir = os.environ['COCO']
 
