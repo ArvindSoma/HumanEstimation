@@ -83,7 +83,8 @@ class ResNetGenerator(nn.Module):
                       UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, dropout=dropout, skip=False, norm=norm)
                       ]
             if idx < 2:
-                model += [MultiDilation(dim_out=out_ch, dilation=1)]
+                model += [nn.LeakyReLU(0.2, inplace=True),
+                          MultiDilation(dim_out=out_ch, dilation=1)]
             in_ch = out_ch
             out_ch = in_ch // 2
 
