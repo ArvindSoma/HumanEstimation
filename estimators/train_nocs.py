@@ -63,7 +63,7 @@ class TrainNOCs:
             self.foreground = False
         elif output_heads == 'two':
             self.forward = self.forward_2_heads
-            # self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
+            self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
             # self.seg_net = Unet2HeadGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
             #                                   use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
             #                                   last_layer=nn.ReLU())

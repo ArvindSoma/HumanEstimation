@@ -26,6 +26,7 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
+    parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     return parser.parse_args(args)
 
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Heads',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth'])
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth',
+                      '--num_heads=one'] + sys.argv[1:])
     main(opt=opt)
 
