@@ -38,7 +38,7 @@ def main(opt):
                             checkpoint=opt.checkpoint, output_heads=opt.num_heads)
 
     main_writer = SummaryWriter(os.path.join(opt.log_dir, 'test'))
-    test_loader = ImageLoader(train=False, parent_dir=opt.parent_dir)
+    test_loader = ImageLoader(train=False, parent_dir=opt.parent_dir, file_ext=opt.file_ext)
     data_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
 
     noc_trained.test(test_loader=data_loader, test_writer=main_writer, niter=0)
@@ -53,6 +53,6 @@ if __name__ == "__main__":
                       '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth',
                       '--parent_dir=../3d_data/DensePoseData/demo_data',
                       '--num_heads=one',
-                      '--file_ext'] + sys.argv[1:])
+                      '--file_ext=png'] + sys.argv[1:])
     main(opt=opt)
 
