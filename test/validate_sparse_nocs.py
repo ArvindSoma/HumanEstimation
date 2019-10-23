@@ -40,7 +40,9 @@ def main(opt):
     test_loader = SparsePointLoader(train=False, parent_dir=coco_parent_dir)
     data_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
 
-    noc_trained.test(test_loader=data_loader, test_writer=main_writer, niter=0)
+    ply_save = '../3d_data/{}'.format(os.path.basename(opt.log_dir))
+
+    noc_trained.validate(test_loader=data_loader, test_writer=main_writer, niter=0, write_ply=True, ply_dir=ply_save)
 
     return True
 
