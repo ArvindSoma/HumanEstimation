@@ -276,6 +276,19 @@ class TrainNOCs:
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
                               name="Validation", niter=niter, foreground=self.foreground)
 
+    def test(self, test_loader, niter, test_writer):
+
+        with torch.no_grad():
+            self.seg_net.eval()
+            for idx, batch in enumerate(test_loader):
+                for keys in batch:
+                    batch[keys] = batch[keys].float().cuda()
+                output = self.seg_net(batch['image'])
+                batch['image'] = batch['image'] * 2 - 1
+                visualize(writer=test_writer, batch=batch, output=(output, self.loss_tuple(0, 0, 0, 0)),
+                          name="Validation", niter=niter, foreground=self.foreground)
+
+
     def run(self, opt, data_loader, writer, epoch=0):
 
         total_losses = self.loss_tuple(0, 0, 0, 0)
