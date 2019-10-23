@@ -10,7 +10,7 @@ from models.networks import *
 from utils.common import *
 
 
-def visualize(batch, output, writer, name, niter, foreground=False):
+def visualize(batch, output, writer, name, niter, foreground=False, test=False):
     output_image = output[0]
     if foreground:
         output_image = output[0][1]
@@ -25,8 +25,9 @@ def visualize(batch, output, writer, name, niter, foreground=False):
     writer.add_scalar('NOC-Loss', output[1].NOC_loss, niter)
     writer.add_scalar('Background-Loss', output[1].background_loss, niter)
     write_image(writer, name="{}/Output_NOC".format(name), sample=(output_image * 2) - 1, niter=niter)
-    write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
-    write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
+    if not test:
+        write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
+        write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
 
     return True
 
@@ -286,7 +287,7 @@ class TrainNOCs:
                 output = self.seg_net(batch['image'])
                 batch['image'] = batch['image'] * 2 - 1
                 visualize(writer=test_writer, batch=batch, output=(output, self.loss_tuple(0, 0, 0, 0)),
-                          name="Validation", niter=niter, foreground=self.foreground)
+                          name="Validation", niter=niter, foreground=self.foreground, test=True)
 
     def run(self, opt, data_loader, writer, epoch=0):
 
