@@ -28,6 +28,7 @@ def parse_args(args):
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
     parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
+    parser.add_argument('--file_ext', type=str, default='png', help='file extension')
     return parser.parse_args(args)
 
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
                       '--batch_size=8',
                       '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth',
                       '--parent_dir=../3d_data/DensePoseData/demo_data',
-                      '--num_heads=one'] + sys.argv[1:])
+                      '--num_heads=one',
+                      '--file_ext'] + sys.argv[1:])
     main(opt=opt)
 

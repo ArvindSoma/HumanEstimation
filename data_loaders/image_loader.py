@@ -13,28 +13,19 @@ from glob import glob
 class ImageLoader(Dataset):
     def __init__(self,
                  train=False,
-                 scales=(1.0,),
                  parent_dir='',
-                 base_size=None,
-                 crop_size=256,
-                 point_select=1,
-                 flip=True,
+                 file_ext='png',
                  transform=transforms.Compose([
                      transforms.ToTensor()])):
         # ,
         #                      transforms.Normalize(mean=(0, 0, 0), std=(0.5, 0.5, 0.5))
 
         self.parent_dir = parent_dir
-        self.base_size = base_size
-        self.scales = scales
-        self.crop_size = crop_size
-        self.flip = flip
-        self.point_select = point_select
         self.train = train
         self.transform = transform
         self.max_pad = 1200
 
-        self.data = sorted(glob(os.path.join(parent_dir, '*.jpg')))
+        self.data = sorted(glob(os.path.join(parent_dir, '*.{}'.format(file_ext))))
 
         self.len = len(self.data)
 

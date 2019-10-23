@@ -25,8 +25,8 @@ def visualize(batch, output, writer, name, niter, foreground=False, test=False):
     writer.add_scalar('NOC-Loss', output[1].NOC_loss, niter)
     writer.add_scalar('Background-Loss', output[1].background_loss, niter)
     write_image(writer, name="{}/Output_NOC".format(name), sample=(output_image * 2) - 1, niter=niter)
+    write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
     if not test:
-        write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
         write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
 
     return True
