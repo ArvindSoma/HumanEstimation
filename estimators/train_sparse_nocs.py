@@ -58,6 +58,6 @@ if __name__ == "__main__":
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=100',
-                      '--num_heads=one'])
+                      '--num_heads=one'] + sys.argv[1:])
     main(opt=opt)
 
