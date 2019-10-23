@@ -42,7 +42,7 @@ def main(opt):
 
     ply_save = '../3d_data/{}'.format(os.path.basename(opt.log_dir))
 
-    noc_trained.test(test_loader=data_loader, test_writer=main_writer, niter=0, write_ply=True, ply_dir=ply_save)
+    noc_trained.validate(test_loader=data_loader, test_writer=main_writer, niter=0, write_ply=True, ply_dir=ply_save)
 
     return True
 
@@ -51,6 +51,6 @@ if __name__ == "__main__":
     opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Heads',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads/save_330499.pth'])
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth'])
     main(opt=opt)
 

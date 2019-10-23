@@ -10,19 +10,24 @@ from models.networks import *
 from utils.common import *
 
 
-def visualize(batch, output, writer, name, niter):
+def visualize(batch, output, writer, name, niter, foreground=False):
+    output_image = output[0]
+    if foreground:
+        output_image = output[0][1]
+        foreground = output[0][0]
+        write_image(writer, name="{}/Ground Truth Foreground".format(name),
+                    sample=((1 - batch['background']).long() * 2 - 1), niter=niter)
+        write_image(writer, name="{}/Output_Foreground".format(name),
+                    sample=((torch.softmax(foreground, 1)[:, 1:2, :, :] > 0.5).long() * 2) - 1, niter=niter)
+        final_noc = output_image * (torch.softmax(output[0][0], 1)[:, 1:2, :, :] > 0.5).float()
+        write_image(writer, name="{}/Output_Final_NOC".format(name), sample=(final_noc * 2) - 1, niter=niter)
     writer.add_scalar('L1-Loss', output[1].total_loss, niter)
     writer.add_scalar('NOC-Loss', output[1].NOC_loss, niter)
     writer.add_scalar('Background-Loss', output[1].background_loss, niter)
-    write_image(writer, name="{}/Output_NOC".format(name), sample=(output[0][1] * 2) - 1, niter=niter)
-    write_image(writer, name="{}/Output_Foreground".format(name),
-                sample=((torch.softmax(output[0][0], 1)[:, 1:2, :, :] > 0.5).long() * 2) - 1, niter=niter)
-    final_noc = output[0][1] * (torch.softmax(output[0][0], 1)[:, 1:2, :, :] > 0.5).float()
-    write_image(writer, name="{}/Output_Final_NOC".format(name), sample=(final_noc * 2) - 1, niter=niter)
+    write_image(writer, name="{}/Output_NOC".format(name), sample=(output_image * 2) - 1, niter=niter)
     write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
     write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
-    write_image(writer, name="{}/Ground Truth Foreground".format(name),
-                sample=((1 - batch['background']).long() * 2 - 1), niter=niter)
+
     return True
 
 
@@ -46,7 +51,7 @@ class UnNormalize(object):
 
 class TrainNOCs:
     def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=5e-4,
-                 betas=(0.5, 0.999), batch_size=8, checkpoint=None):
+                 betas=(0.5, 0.999), batch_size=8, checkpoint=None, output_heads='two'):
 
         # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
         #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
@@ -54,8 +59,8 @@ class TrainNOCs:
         # self.seg_net = Unet2HeadGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
         #                                   use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
         #                                   last_layer=nn.ReLU())
-        # self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
-        self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
+        self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
+        # self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
         # self.seg_net = ResUnetGenerator(output_nc=3)
 
         # self.seg_net.apply(init_weights)
@@ -85,8 +90,16 @@ class TrainNOCs:
         self.save_path = os.path.join("../saves", save_dir)
         if not os.path.exists(self.save_path):
             os.mkdir(self.save_path)
-
-        self.forward = self.forward_2_heads
+        if output_heads == 'one':
+            self.forward = self.forward_sparse
+            self.foreground = False
+        elif output_heads == 'two':
+            self.forward = self.forward_2_heads
+            self.foreground = True
+        else:
+            self.foreground = None
+            print("Error! Unknown number of heads!")
+            exit(256)
         self.batch_size = batch_size
         self.mean = mean
         self.std = std
@@ -222,7 +235,7 @@ class TrainNOCs:
                 write_file.write(start)
                 np.savetxt(write_file, concatenated_gt, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
-    def test(self, test_loader, niter, test_writer, write_ply=False, ply_dir=''):
+    def validate(self, test_loader, niter, test_writer, write_ply=False, ply_dir=''):
         total_losses = self.loss_tuple(0, 0, 0, 0)
         if write_ply:
             if not os.path.exists(ply_dir):
@@ -252,7 +265,6 @@ class TrainNOCs:
 
                         total_losses[jdx] /= len(test_loader)
 
-
                     print("Validation loss: {}".format(total_losses.total_loss))
 
                     # batch['image'] = self.un_norm(batch['image'])
@@ -260,7 +272,7 @@ class TrainNOCs:
 
                     test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
-                              name="Validation", niter=niter)
+                              name="Validation", niter=niter, foreground=self.foreground)
 
     def run(self, opt, data_loader, writer, epoch=0):
 
@@ -292,7 +304,7 @@ class TrainNOCs:
                 print("Epoch: {}  |  Iteration: {}  |  Train Loss: {}".format(epoch, niter, losses.total_loss.item()))
                 batch['image'] = batch['image'] * 2 - 1
                 visualize(writer=writer.train, batch=batch, output=(output, losses),
-                          name="Train Total", niter=niter)
+                          name="Train Total", niter=niter, foreground=self.foreground)
 
                 # batch['image'] = self.un_norm(batch['image'])
                 # visualize(writer=writer.train, batch=batch, output=(output, loss),
@@ -314,7 +326,7 @@ class TrainNOCs:
                 #           name="Train Total", niter=(epoch + 1) * data_length)
 
                 # self.test(test_loader=data_loader.test, test_writer=writer.test, niter=(epoch + 1) * data_length)
-        self.test(test_loader=data_loader.test, test_writer=writer.test, niter=(epoch + 1) * data_length + 1)
+        self.validate(test_loader=data_loader.validate, test_writer=writer.validate, niter=(epoch + 1) * data_length + 1)
 
         print("*" * 100)
 
