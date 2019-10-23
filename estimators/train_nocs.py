@@ -218,7 +218,11 @@ class TrainNOCs:
         num = batch['num_points'].view(batch_size, 1)
         for pdx in range(batch_size):
             image = batch['image'][pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
-            output_arr = output[1][pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
+            if self.foreground:
+                out_arr = output[1]
+            else:
+                out_arr = output
+            output_arr = out_arr[pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
             noc_gt = batch['noc_points'][pdx, :num[pdx, 0]].cpu().numpy()
             image = image.cpu().numpy().T
             image = image[:, [2, 1, 0]] * 255
