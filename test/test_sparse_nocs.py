@@ -27,13 +27,14 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
+    parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     return parser.parse_args(args)
 
 
 def main(opt):
 
     noc_trained = TrainNOCs(batch_size=opt.batch_size, save_dir=os.path.basename(opt.log_dir),
-                            checkpoint=opt.checkpoint, output_heads='two')
+                            checkpoint=opt.checkpoint, output_heads=opt.num_heads)
 
     main_writer = SummaryWriter(os.path.join(opt.log_dir, 'test'))
     test_loader = ImageLoader(train=False, parent_dir=opt.parent_dir)
@@ -49,6 +50,7 @@ if __name__ == "__main__":
                       '--log_iter=200',
                       '--batch_size=8',
                       '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth',
-                      '--parent_dir=../3d_data/DensePoseData/demo_data'] + sys.argv[1:])
+                      '--parent_dir=../3d_data/DensePoseData/demo_data',
+                      '--num_heads=one'] + sys.argv[1:])
     main(opt=opt)
 
