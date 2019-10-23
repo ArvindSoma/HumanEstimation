@@ -26,12 +26,13 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
+    parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     return parser.parse_args(args)
 
 
 def main(opt):
 
-    noc_trained = TrainNOCs(save_dir=os.path.basename(opt.log_dir), output_heads='one')
+    noc_trained = TrainNOCs(save_dir=os.path.basename(opt.log_dir), output_heads=opt.num_heads)
 
     coco_parent_dir = os.environ['COCO']
 
@@ -56,6 +57,7 @@ if __name__ == "__main__":
     opt = parse_args(['--log_dir=../data/logs/sparse_trial_ResNet_Dropout_1Head_1',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--epochs=100'])
+                      '--epochs=100',
+                      '--num_heads=one'])
     main(opt=opt)
 
