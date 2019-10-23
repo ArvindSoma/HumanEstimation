@@ -53,15 +53,26 @@ class TrainNOCs:
     def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=5e-4,
                  betas=(0.5, 0.999), batch_size=8, checkpoint=None, output_heads='two'):
 
-        # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
-        #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
-        #                              last_layer=nn.LeakyReLU(0.2))
-        # self.seg_net = Unet2HeadGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
-        #                                   use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
-        #                                   last_layer=nn.ReLU())
-        self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
-        # self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
-        # self.seg_net = ResUnetGenerator(output_nc=3)
+
+
+        if output_heads == 'one':
+            self.forward = self.forward_sparse
+            self.seg_net = ResNetGenerator(out_channels=3, last_layer=nn.ReLU())
+            # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
+            #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
+            #                              last_layer=nn.LeakyReLU(0.2))
+            self.foreground = False
+        elif output_heads == 'two':
+            self.forward = self.forward_2_heads
+            # self.seg_net = ResNet2HeadGenerator(out_channels=3, last_layer=nn.ReLU())
+            # self.seg_net = Unet2HeadGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
+            #                                   use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
+            #                                   last_layer=nn.ReLU())
+            self.foreground = True
+        else:
+            self.foreground = None
+            print("Error! Unknown number of heads!")
+            exit(256)
 
         # self.seg_net.apply(init_weights)
         # stat(model=self.seg_net, input_size=(3, 256, 256))
@@ -90,16 +101,7 @@ class TrainNOCs:
         self.save_path = os.path.join("../saves", save_dir)
         if not os.path.exists(self.save_path):
             os.mkdir(self.save_path)
-        if output_heads == 'one':
-            self.forward = self.forward_sparse
-            self.foreground = False
-        elif output_heads == 'two':
-            self.forward = self.forward_2_heads
-            self.foreground = True
-        else:
-            self.foreground = None
-            print("Error! Unknown number of heads!")
-            exit(256)
+
         self.batch_size = batch_size
         self.mean = mean
         self.std = std
