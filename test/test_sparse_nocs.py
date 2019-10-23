@@ -48,9 +48,9 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_test_UNet_Dropout_2Heads',
+    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Heads',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads/save_72709.pth'])
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads/save_330499.pth'])
     main(opt=opt)
 

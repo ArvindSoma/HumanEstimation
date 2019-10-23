@@ -94,15 +94,15 @@ class TrainNOCs:
         self.loss_tuple = recordclass('losses', ('total_loss', 'NOC_loss', 'background_loss', 'NOC_mse'))
 
         self.ply_start = '''ply
-format ascii 1.0
-element vertex {}
-property float x
-property float y
-property float z
-property uchar red
-property uchar green
-property uchar blue
-end_header\n'''
+        format ascii 1.0
+        element vertex {}
+        property float x
+        property float y
+        property float z
+        property uchar red
+        property uchar green
+        property uchar blue
+        end_header\n'''
 
         self.un_norm = UnNormalize(mean=self.mean, std=self.std)
 
@@ -139,7 +139,8 @@ end_header\n'''
                 batch_size -= 1
                 continue
             sub += self.l1(output[idx, :, batch['yx_loc'][idx, :num[idx, 0], 0], batch['yx_loc'][idx, :num[idx, 0], 1]],
-                          batch['noc_image'][idx, :, batch['yx_loc'][idx, :num[idx, 0], 0], batch['yx_loc'][idx, :num[idx, 0], 1]])
+                           batch['noc_image'][idx, :, batch['yx_loc'][idx, :num[idx, 0], 0],
+                           batch['yx_loc'][idx, :num[idx, 0], 1]])
 
         return sub / batch_size
 
@@ -164,7 +165,7 @@ end_header\n'''
         total_loss = 0
         output = self.seg_net(batch['image'])
         masked_output = output[1] * (batch['mask_image'] > 0).float()
-        noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch) * 5
+        noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch) * 15
         total_loss += noc_loss
         # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
         foreground = (1 - batch['background'][:, 0:2, :, :]).float()
