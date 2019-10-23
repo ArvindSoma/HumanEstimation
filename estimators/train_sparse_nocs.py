@@ -37,7 +37,7 @@ def main(opt):
 
     main_writer = namedtuple('main_writer', ('train', 'test'))
     main_writer = main_writer(SummaryWriter(os.path.join(opt.log_dir, 'train')),
-                         SummaryWriter(os.path.join(opt.log_dir, 'test')))
+                              SummaryWriter(os.path.join(opt.log_dir, 'test')))
 
     train_loader = SparsePointLoader(train=True, parent_dir=coco_parent_dir)
     train_loader = DataLoader(train_loader, batch_size=opt.batch_size, shuffle=True, num_workers=2)
