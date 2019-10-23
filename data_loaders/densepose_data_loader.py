@@ -7,6 +7,7 @@ import random
 import pickle
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
+from glob import glob
 
 
 class SparsePointLoader(Dataset):
@@ -37,11 +38,13 @@ class SparsePointLoader(Dataset):
             read_file_name = '../data/dp_annotation/train.pkl'
 
         else:
-            read_file_name = '../data/dp_annotation/valminusminival.pkl'  # 'valminusminival'
-            self.point_select = 1
+            # read_file_name = '../data/dp_annotation/valminusminival.pkl'  # 'valminusminival'
+            # self.point_select = 1
+            self.data = sorted(glob(os.path.join(parent_dir, '*.jpg')))
 
-        with open(read_file_name, 'rb') as read_file:
-            self.data = pickle.load(read_file)
+
+        # with open(read_file_name, 'rb') as read_file:
+        #     self.data = pickle.load(read_file)
 
         self.len = len(self.data)
 
@@ -80,59 +83,64 @@ class SparsePointLoader(Dataset):
         data_dict = {}
 
         data_point = self.data[index]
-        internal_file_loc = data_point['file_name']
+        # internal_file_loc = data_point['file_name']
 
-        image = cv2.imread(filename=os.path.join(self.parent_dir, internal_file_loc))
-        h, w, c = image.shape
-        yx_loc = data_point['points']['yx']
-        point_len, _ = yx_loc.shape
-        noc_points = data_point['points']['noc']
+        image = cv2.imread(filename=self.data[index])
 
-        background = cv2.imread(filename=os.path.join(self.parent_dir, 'background', internal_file_loc))
-        # print(background[:, :, 0] == )
-
-
-        # np.random.seed(int(time.time()))
-        # selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
+        # image = cv2.imread(filename=os.path.join(self.parent_dir, internal_file_loc))
+        # h, w, c = image.shape
+        # yx_loc = data_point['points']['yx']
+        # point_len, _ = yx_loc.shape
+        # noc_points = data_point['points']['noc']
         #
-        # yx_loc = yx_loc[selection, :]
-        # noc_points = noc_points[selection, :]
+        # background = cv2.imread(filename=os.path.join(self.parent_dir, 'background', internal_file_loc))
+        # # print(background[:, :, 0] == )
+        #
+        #
+        # # np.random.seed(int(time.time()))
+        # # selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
+        # #
+        # # yx_loc = yx_loc[selection, :]
+        # # noc_points = noc_points[selection, :]
+        #
+        # data_dict['image'], background, (h_, w_), (c_h, c_w) = self.fixed_rescale_crop(image=image,
+        #                                                                                background=background)
+        # data_dict['background'] = torch.from_numpy((background.transpose([2, 0, 1]) > 0).astype('float32'))
+        #
+        # yx_loc = (yx_loc * [h_, w_] / [h, w]).astype('int')
+        #
+        # loc_selection = np.where(
+        #     ((c_h <= yx_loc[:, 0]) & (yx_loc[:, 0] < (c_h + self.crop_size))) & (
+        #                 (c_w <= yx_loc[:, 1]) & (yx_loc[:, 1] < (c_w + self.crop_size))))
+        # yx_loc = yx_loc[loc_selection] - [c_h, c_w]
+        #
+        # noc_points = noc_points[loc_selection]
+        #
+        # mask_image = np.zeros((self.crop_size, self.crop_size, 1))
+        # mask_image[yx_loc[:, 0], yx_loc[:, 1], 0] = 1
+        #
+        # noc_image = np.ones((self.crop_size, self.crop_size, 3)) * -1
+        # noc_image[yx_loc[:, 0], yx_loc[:, 1], :] = noc_points
+        # num_points = np.array(yx_loc.shape[0])
+        # # num_points[num_points == 0] = 1
+        # data_dict['num_points'] = torch.from_numpy(num_points)
+        # data_dict['mask_image'] = torch.from_numpy(mask_image.transpose([2, 0, 1]))
+        # data_dict['noc_image'] = torch.from_numpy(noc_image.transpose([2, 0, 1]))
+        #
+        # total_pad = self.max_pad - num_points
+        #
+        # pad_width = ((0, total_pad), (0, 0))
+        #
+        # noc_points = np.pad(noc_points, pad_width=pad_width, mode='constant', constant_values=0)
+        # yx_loc = np.pad(yx_loc, pad_width=pad_width, mode='constant', constant_values=0)
+        #
+        # data_dict['noc_points'] = torch.from_numpy(noc_points)
+        # data_dict['yx_loc'] = yx_loc
+        #
+        # data_dict['image'] = self.transform(data_dict['image'])
 
-        data_dict['image'], background, (h_, w_), (c_h, c_w) = self.fixed_rescale_crop(image=image,
-                                                                                       background=background)
-        data_dict['background'] = torch.from_numpy((background.transpose([2, 0, 1]) > 0).astype('float32'))
-
-        yx_loc = (yx_loc * [h_, w_] / [h, w]).astype('int')
-
-        loc_selection = np.where(
-            ((c_h <= yx_loc[:, 0]) & (yx_loc[:, 0] < (c_h + self.crop_size))) & (
-                        (c_w <= yx_loc[:, 1]) & (yx_loc[:, 1] < (c_w + self.crop_size))))
-        yx_loc = yx_loc[loc_selection] - [c_h, c_w]
-
-        noc_points = noc_points[loc_selection]
-
-        mask_image = np.zeros((self.crop_size, self.crop_size, 1))
-        mask_image[yx_loc[:, 0], yx_loc[:, 1], 0] = 1
-
-        noc_image = np.ones((self.crop_size, self.crop_size, 3)) * -1
-        noc_image[yx_loc[:, 0], yx_loc[:, 1], :] = noc_points
-        num_points = np.array(yx_loc.shape[0])
-        # num_points[num_points == 0] = 1
-        data_dict['num_points'] = torch.from_numpy(num_points)
-        data_dict['mask_image'] = torch.from_numpy(mask_image.transpose([2, 0, 1]))
-        data_dict['noc_image'] = torch.from_numpy(noc_image.transpose([2, 0, 1]))
-
-        total_pad = self.max_pad - num_points
-
-        pad_width = ((0, total_pad), (0, 0))
-
-        noc_points = np.pad(noc_points, pad_width=pad_width, mode='constant', constant_values=0)
-        yx_loc = np.pad(yx_loc, pad_width=pad_width, mode='constant', constant_values=0)
-
-        data_dict['noc_points'] = torch.from_numpy(noc_points)
-        data_dict['yx_loc'] = yx_loc
-
-        data_dict['image'] = self.transform(data_dict['image'])
+        image = cv2.resize(image, (256, 256), cv2.INTER_CUBIC)
+        data_dict['image'] = self.transform(image)
 
         return data_dict
 

@@ -20,9 +20,9 @@ def visualize(batch, output, writer, name, niter):
     final_noc = output[0][1] * (torch.softmax(output[0][0], 1)[:, 1:2, :, :] > 0.5).float()
     write_image(writer, name="{}/Output_Final_NOC".format(name), sample=(final_noc * 2) - 1, niter=niter)
     write_image(writer, name="{}/Input".format(name), sample=batch['image'], niter=niter)
-    write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
-    write_image(writer, name="{}/Ground Truth Foreground".format(name),
-                sample=((1 - batch['background']).long() * 2 - 1), niter=niter)
+    # write_image(writer, name="{}/Ground Truth NOC".format(name), sample=batch['noc_image'], niter=niter)
+    # write_image(writer, name="{}/Ground Truth Foreground".format(name),
+    #             sample=((1 - batch['background']).long() * 2 - 1), niter=niter)
     return True
 
 
@@ -163,17 +163,19 @@ end_header\n'''
     def forward_2_heads(self, batch):
         total_loss = 0
         output = self.seg_net(batch['image'])
-        masked_output = output[1] * (batch['mask_image'] > 0).float()
-        noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch) * 5
-        total_loss += noc_loss
-        # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
-        foreground = (1 - batch['background'][:, 0:2, :, :]).float()
-        foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
-        background_loss = self.bce(input=output[0], target=foreground)
-        total_loss += background_loss
-        mse = self.criterion_mse(output=output[1], batch=batch)
-        losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
-                                 background_loss=background_loss, NOC_mse=mse)
+        # masked_output = output[1] * (batch['mask_image'] > 0).float()
+        # noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch) * 5
+        # total_loss += noc_loss
+        # # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
+        # foreground = (1 - batch['background'][:, 0:2, :, :]).float()
+        # foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
+        # background_loss = self.bce(input=output[0], target=foreground)
+        # total_loss += background_loss
+        # mse = self.criterion_mse(output=output[1], batch=batch)
+        # losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
+        #                          background_loss=background_loss, NOC_mse=mse)
+        losses = self.loss_tuple(total_loss=0, NOC_loss=0,
+                                 background_loss=0, NOC_mse=0)
         return output, losses
 
     def train(self, batch):
@@ -235,31 +237,33 @@ end_header\n'''
                 output, losses = self.forward(batch=batch)
 
                 #  View NOC as PLY
-                if write_ply:
-                    self.write_noc_ply(output=output, batch=batch, idx=idx, ply_dir=ply_dir)
+                # if write_ply:
+                #     self.write_noc_ply(output=output, batch=batch, idx=idx, ply_dir=ply_dir)
 
-                for jdx, val in enumerate(losses):
-                    if jdx is 3:
-                        total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
-                    else:
-                        total_losses[jdx] += losses[jdx].item()
+                # for jdx, val in enumerate(losses):
+                #     if jdx is 3:
+                #         total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
+                #     else:
+                #         total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
 
-                if idx == (len(test_loader) - 1):
-                    # print(len(test_loader))
-                    for jdx, val in enumerate(total_losses):
+                # if idx == (len(test_loader) - 1):
+                #     # print(len(test_loader))
+                #     for jdx, val in enumerate(total_losses):
+                #
+                #         total_losses[jdx] /= len(test_loader)
+                #
+                #
+                #     print("Validation loss: {}".format(total_losses.total_loss))
+                #
+                #     # batch['image'] = self.un_norm(batch['image'])
+                #     batch['image'] = batch['image'] * 2 - 1
+                #
+                #     test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
 
-                        total_losses[jdx] /= len(test_loader)
-
-
-                    print("Validation loss: {}".format(total_losses.total_loss))
-
-                    # batch['image'] = self.un_norm(batch['image'])
-                    batch['image'] = batch['image'] * 2 - 1
-
-                    test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
-                    visualize(writer=test_writer, batch=batch, output=(output, total_losses),
-                              name="Validation", niter=niter)
+                batch['image'] = batch['image'] * 2 - 1
+                visualize(writer=test_writer, batch=batch, output=(output, total_losses),
+                          name="Validation", niter=niter)
 
     def run(self, opt, data_loader, writer, epoch=0):
 
