@@ -54,8 +54,6 @@ def main(opt):
 
     norm_vertices = smpl_render.vertices
 
-
-
     smpl_render_norm = smpl_render.render_interpolate(vertices=uv).interpolated
     
     smpl_body_uv = smpl_render_uv[:, :, :2]

@@ -6,7 +6,7 @@ from tensorboardX import SummaryWriter
 from collections import namedtuple
 
 from estimators.train_nocs import TrainNOCs
-from data_loaders.densepose_data_loader import SparsePointLoader, DataLoader
+from data_loaders.image_loader import ImageLoader, DataLoader
 from utils.common import *
 
 
@@ -23,6 +23,7 @@ def parse_args(args):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', type=str, default='../data/logs', help='log directory')
+    parser.add_argument('--parent_dir', type=str, default='../data/logs', help='image parent directory')
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
@@ -32,12 +33,10 @@ def parse_args(args):
 def main(opt):
 
     noc_trained = TrainNOCs(batch_size=opt.batch_size, save_dir=os.path.basename(opt.log_dir),
-                            checkpoint=opt.checkpoint)
-
-    coco_parent_dir = os.environ['COCO']
+                            checkpoint=opt.checkpoint, output_heads='two')
 
     main_writer = SummaryWriter(os.path.join(opt.log_dir, 'test'))
-    test_loader = SparsePointLoader(train=False, parent_dir=coco_parent_dir)
+    test_loader = ImageLoader(train=False, parent_dir=opt.parent_dir)
     data_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
 
     noc_trained.test(test_loader=data_loader, test_writer=main_writer, niter=0)
@@ -49,6 +48,7 @@ if __name__ == "__main__":
     opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Heads',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth'])
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth',
+                      '--parent_dir=../3d_data/DensePoseData/demo_data'] + sys.argv[1:])
     main(opt=opt)
 
