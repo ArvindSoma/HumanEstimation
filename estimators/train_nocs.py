@@ -172,7 +172,7 @@ class TrainNOCs:
         # if 'mask_image' in batch.keys():
         # masked_output = output * (batch['mask_image'] > 0).float()
         noc_loss = self.criterion_l1_sparse(output=output, batch=batch)
-        total_loss += noc_loss
+        total_loss += noc_loss * 10
         # loss = self.l1(masked_output, batch['noc_image'])
         background_target = torch.zeros_like(output)
         background_loss = self.l1(output * batch['background'], background_target)
