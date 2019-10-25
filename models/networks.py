@@ -480,22 +480,24 @@ class ResUnetGenerator(nn.Module):
 
         in_ch = 512
         out_ch = in_ch // 2
-        skip = False
+
         for idx, val in enumerate(reversed(index_list[1:])):
             if idx == 0:
-                norm = None
+                skip = False
             else:
-                norm = norm_layer
                 skip = True
 
             if idx == (len(index_list) - 2):
                 out_ch = output_nc
+                norm_layer = None
 
             module = [nn.LeakyReLU(0.2),
-                      UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm)]
+                      UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm_layer)]
 
             if idx == (len(index_list) - 2):
-                module += [last_layer]
+                module += [nn.LeakyReLU(0.2),
+                           MultiDilation(dim_out=out_ch, norm_layer=None),
+                           last_layer]
 
             up += [nn.Sequential(*module)]
             in_ch = out_ch
@@ -560,13 +562,12 @@ class ResUnet2HeadGenerator(nn.Module):
         skip = False
         for idx, val in enumerate(reversed(index_list[1:-1])):
             if idx == 0:
-                norm = None
+                skip = False
             else:
-                norm = norm_layer
                 skip = True
 
             up += [nn.Sequential(nn.LeakyReLU(0.2),
-                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm))]
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm_layer))]
 
             in_ch = out_ch
             out_ch = in_ch // 2 if in_ch > 64 else 64
@@ -580,7 +581,11 @@ class ResUnet2HeadGenerator(nn.Module):
                 out_ch = output_nc
 
             seq = [nn.Sequential(nn.LeakyReLU(0.2),
-                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm))]
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=None)),
+                   nn.LeakyReLU(0.2),
+                   MultiDilation(dim_out=out_ch, norm_layer=None),
+                   last_layer
+                   ]
             if idx == 1:
                 seq += [last_layer]
             self.output_list.append(nn.Sequential(*seq))
