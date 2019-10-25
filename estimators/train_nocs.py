@@ -234,11 +234,11 @@ class TrainNOCs:
             image = batch['image'][pdx, :, :, :].cpu().numpy()
             image = image.transpose(1, 2, 0) * 255
             cv2.imwrite(os.path.join(ply_dir, 'Output_{}.png'.format(idx + pdx)), image.astype('uint8'))
-            with open(os.path.join(ply_dir, 'Output_{}.ply'.format(idx + pdx)), 'a') as write_file:
+            with open(os.path.join(ply_dir, 'Output_{}.ply'.format(idx + pdx)), 'w') as write_file:
                 write_file.write(start)
                 np.savetxt(write_file, concatenated_out, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
-            with open(os.path.join(ply_dir, 'Ground_truth_{}.ply'.format(idx + pdx)), 'a') as write_file:
+            with open(os.path.join(ply_dir, 'Ground_truth_{}.ply'.format(idx + pdx)), 'w') as write_file:
                 write_file.write(start)
                 np.savetxt(write_file, concatenated_gt, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
