@@ -27,6 +27,7 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
+    parser.add_argument('--model_type', type=str, default='res', help='model type')
     parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     parser.add_argument('--file_ext', type=str, default='png', help='file extension')
     return parser.parse_args(args)
@@ -35,7 +36,8 @@ def parse_args(args):
 def main(opt):
 
     noc_trained = TrainNOCs(batch_size=opt.batch_size, save_dir=os.path.basename(opt.log_dir),
-                            checkpoint=opt.checkpoint, output_heads=opt.num_heads)
+                            checkpoint=opt.checkpoint, output_heads=opt.num_heads,
+                            model_type=opt.model_type)
 
     main_writer = SummaryWriter(os.path.join(opt.log_dir, 'test'))
     test_loader = ImageLoader(train=False, parent_dir=opt.parent_dir, file_ext=opt.file_ext)
@@ -52,6 +54,7 @@ if __name__ == "__main__":
                       '--batch_size=8',
                       '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_3/save_82624.pth',
                       '--parent_dir=../3d_data/DensePoseData/demo_data',
+                      '--model_type=res_unet',
                       '--num_heads=two',
                       '--file_ext=png'] + sys.argv[1:])
     main(opt=opt)

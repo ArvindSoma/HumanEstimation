@@ -26,6 +26,7 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
+    parser.add_argument('--model_type', type=str, default='res', help='model type')
     parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     return parser.parse_args(args)
 
@@ -33,7 +34,8 @@ def parse_args(args):
 def main(opt):
 
     noc_trained = TrainNOCs(batch_size=opt.batch_size, save_dir=os.path.basename(opt.log_dir),
-                            checkpoint=opt.checkpoint, output_heads=opt.num_heads)
+                            checkpoint=opt.checkpoint, output_heads=opt.num_heads,
+                            model_type=opt.model_type)
 
     coco_parent_dir = os.environ['COCO']
 
@@ -49,10 +51,11 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Head_1',
+    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResUNet_Dropout_2Head_1',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Head_1/save_16524.pth',
-                      '--num_heads=two'] + sys.argv[1:])
+                      '--checkpoint=../saves/sparse_trial_ResUNet_Dropout_2Head_1/save_19829.pth',
+                      '--num_heads=two',
+                      '--model_type=res_unet'] + sys.argv[1:])
     main(opt=opt)
 
