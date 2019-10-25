@@ -392,13 +392,13 @@ class UnetSkipConnectionBlock2(nn.Module):
             return torch.cat([x, self.model(x)], 1)
 
 
-class ResUnetGenerator(nn.Module):
+class ResUnetGeneratorTest(nn.Module):
     """Create a ResUnet generator"""
 
     def __init__(self, output_nc, norm_layer=nn.BatchNorm2d, last_layer=nn.Tanh(),
                  latent=ResNet18Features(final_layer=-2)):
 
-        super(ResUnetGenerator, self).__init__()
+        super(ResUnetGeneratorTest, self).__init__()
         latent = nn.Sequential(*list(*latent.children()))
 
         # index_list = list(range(8, 1, -1))
@@ -442,7 +442,7 @@ class ResUnetGenerator(nn.Module):
         return out
 
 
-class ResUnetGeneratorTest(nn.Module):
+class ResUnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
     def __init__(self, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
@@ -459,38 +459,10 @@ class ResUnetGeneratorTest(nn.Module):
         We construct the U-Net from the innermost layer to the outermost layer.
         It is a recursive process.
         """
-        super(ResUnetGeneratorTest, self).__init__()
+        super(ResUnetGenerator, self).__init__()
         latent = nn.Sequential(*list(*latent.children()))
 
         index_list = [8, 7, 6, 4, 3, 2]
-
-        # out_ch = in_ch // 2
-        # construct unet structure
-        # add the innermost layer
-        # unet_block = ResUnetSkipConnectionBlock(in_ch , in_ch, input_nc=None, submodule=None, norm_layer=norm_layer,
-        #                                      innermost=True, down_block=latent[index_list.pop(0)], dilation=dilation)
-        #
-        # if combine_resnet:
-        #     unet_block += combine_resnet
-        #
-        # dropout = False
-        #
-        # for idx in range(4):
-        #     in_ch = in_ch // 2
-        #     if idx == 1 and use_dropout is True:
-        #         dropout = True
-        #     num_chanels = in_ch + in_ch // 2
-        #     # if idx == 1:
-        #     #     num_chanels = in_ch
-        #     unet_block = ResUnetSkipConnectionBlock(in_ch, num_chanels, input_nc=None, submodule=unet_block,
-        #                                             norm_layer=norm_layer, use_dropout=dropout,
-        #                                             down_block=latent[index_list.pop(0)], dilation=dilation)
-        #
-        # # add the outermost layer
-        #
-        # self.model = ResUnetSkipConnectionBlock(output_nc, in_ch // 2, input_nc=input_nc,
-        #                                         submodule=unet_block, outermost=outermost, norm_layer=norm_layer,
-        #                                         down_block=latent[:(index_list.pop(0) + 1)], last_layer=last_layer)
 
         # down = []
         down = [latent[index: index_list[-(idx + 2)]] if idx > 0 else latent[:(index + 1)] for idx, index in
@@ -538,6 +510,92 @@ class ResUnetGeneratorTest(nn.Module):
             out = layer(out)
 
         return out
+
+
+class ResUnet2HeadGenerator(nn.Module):
+    """Create a Unet-based generator"""
+
+    def __init__(self, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
+                 use_dropout=True, dilation=1, combine_resnet=None, last_layer=nn.Tanh(),
+                 latent=ResNet18Features(final_layer=-2)):
+        """Construct a Unet generator
+        Parameters:
+            input_nc (int)  -- the number of channels in input images
+            output_nc (int) -- the number of channels in output images
+            num_downs (int) -- the number of downsamplings in UNet. For example, # if |num_downs| == 7,
+                                image of size 128x128 will become of size 1x1 # at the bottleneck
+            ngf (int)       -- the number of filters in the last conv layer
+            norm_layer      -- normalization layer
+        We construct the U-Net from the innermost layer to the outermost layer.
+        It is a recursive process.
+        """
+        super(ResUnet2HeadGenerator, self).__init__()
+        latent = nn.Sequential(*list(*latent.children()))
+
+        index_list = [8, 7, 6, 4, 3, 2]
+
+        # down = []
+        down = [latent[index: index_list[-(idx + 2)]] if idx > 0 else latent[:(index + 1)] for idx, index in
+                enumerate(reversed(index_list[1:]))]
+        # for idx, val in enumerate(reversed(index_list[1:])):
+        #     if idx == 0:
+        #         down += [latent[:(val + 1)]]
+        #     else:
+        #         down += [latent[val: index_list[-(idx + 2)]]]
+
+        self.down_sample = nn.ModuleList(down)
+        up = []
+
+        in_ch = 512
+        out_ch = in_ch // 2
+        skip = False
+        for idx, val in enumerate(reversed(index_list[1:-1])):
+            if idx == 0:
+                norm = None
+            else:
+                norm = norm_layer
+                skip = True
+
+            up += [nn.Sequential(nn.LeakyReLU(0.2),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm))]
+
+            in_ch = out_ch
+            out_ch = in_ch // 2 if in_ch > 64 else 64
+        self.up_sample = nn.ModuleList(up)
+
+        self.output_list = nn.ModuleList()
+        for idx in range(2):
+            if idx is 0:
+                out_ch = 2
+            else:
+                out_ch = output_nc
+
+            seq = [nn.Sequential(nn.LeakyReLU(0.2),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm))]
+            if idx == 1:
+                seq += [last_layer]
+            self.output_list.append(nn.Sequential(*seq))
+
+    def forward(self, net):
+        downs = []
+        for idx, layer in enumerate(self.down_sample):
+            net = layer(net)
+            downs.append(net)
+
+        out = downs.pop(-1)
+
+        for idx, layer in enumerate(self.up_sample):
+            if idx > 0:
+                out = torch.cat([downs.pop(-1), out], dim=1)
+            out = layer(out)
+
+        net = torch.cat([downs.pop(-1), out], dim=1)
+
+        outputs = []
+        for idx in range(2):
+            outputs.append(self.output_list[idx](net))
+
+        return outputs
 
 
 class ResUnetSkipConnectionBlock(nn.Module):
@@ -617,7 +675,7 @@ class ResUnetSkipConnectionBlock(nn.Module):
 
 
 if __name__ == "__main__":
-    model = ResUnetGeneratorTest(output_nc=3)
+    model = ResUnet2HeadGenerator(output_nc=3)
     # model.train()
     # model = torch.nn.Sequential(*model.children())
     # print(model[0][0])
@@ -626,4 +684,4 @@ if __name__ == "__main__":
     #     print(param.requires_grad)
     inp = torch.randn((2, 3, 256, 256))
     out = model(inp)
-    print(out.shape)
+    print(len(out))
