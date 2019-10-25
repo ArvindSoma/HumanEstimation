@@ -492,6 +492,9 @@ class ResUnetGenerator(nn.Module):
             up += [nn.Sequential(nn.LeakyReLU(0.2),
                                  UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm))]
 
+            if idx == (len(index_list) - 2):
+                up += [last_layer]
+
             in_ch = out_ch
             out_ch = in_ch // 2 if in_ch > 64 else 64
         self.up_sample = nn.ModuleList(up)
