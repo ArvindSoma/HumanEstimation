@@ -47,12 +47,12 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Heads',
+    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResNet_Dropout_2Heads_3',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_2/save_13219.pth',
+                      '--checkpoint=../saves/sparse_trial_ResNet_Dropout_2Heads_3/save_82624.pth',
                       '--parent_dir=../3d_data/DensePoseData/demo_data',
-                      '--num_heads=one',
+                      '--num_heads=two',
                       '--file_ext=png'] + sys.argv[1:])
     main(opt=opt)
 

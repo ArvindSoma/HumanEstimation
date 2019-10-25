@@ -445,7 +445,7 @@ class ResUnetGenerator(nn.Module):
 class ResUnetGeneratorTest(nn.Module):
     """Create a Unet-based generator"""
 
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
+    def __init__(self, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
                  use_dropout=True, dilation=1, combine_resnet=None, last_layer=nn.Tanh(),
                  latent=ResNet18Features(final_layer=-2)):
         """Construct a Unet generator
@@ -462,37 +462,80 @@ class ResUnetGeneratorTest(nn.Module):
         super(ResUnetGeneratorTest, self).__init__()
         latent = nn.Sequential(*list(*latent.children()))
 
-        index_list = [7, 6, 5, 4, 3, 2]
+        index_list = [8, 7, 6, 4, 3, 2]
 
-        in_ch = 512
         # out_ch = in_ch // 2
         # construct unet structure
-        unet_block = ResUnetSkipConnectionBlock(in_ch , in_ch, input_nc=None, submodule=None, norm_layer=norm_layer,
-                                             innermost=True, down_block=latent[index_list.pop(0)], dilation=dilation)  # add the innermost layer
+        # add the innermost layer
+        # unet_block = ResUnetSkipConnectionBlock(in_ch , in_ch, input_nc=None, submodule=None, norm_layer=norm_layer,
+        #                                      innermost=True, down_block=latent[index_list.pop(0)], dilation=dilation)
+        #
+        # if combine_resnet:
+        #     unet_block += combine_resnet
+        #
+        # dropout = False
+        #
+        # for idx in range(4):
+        #     in_ch = in_ch // 2
+        #     if idx == 1 and use_dropout is True:
+        #         dropout = True
+        #     num_chanels = in_ch + in_ch // 2
+        #     # if idx == 1:
+        #     #     num_chanels = in_ch
+        #     unet_block = ResUnetSkipConnectionBlock(in_ch, num_chanels, input_nc=None, submodule=unet_block,
+        #                                             norm_layer=norm_layer, use_dropout=dropout,
+        #                                             down_block=latent[index_list.pop(0)], dilation=dilation)
+        #
+        # # add the outermost layer
+        #
+        # self.model = ResUnetSkipConnectionBlock(output_nc, in_ch // 2, input_nc=input_nc,
+        #                                         submodule=unet_block, outermost=outermost, norm_layer=norm_layer,
+        #                                         down_block=latent[:(index_list.pop(0) + 1)], last_layer=last_layer)
 
-        if combine_resnet:
-            unet_block += combine_resnet
+        down = [latent[index: index_list[-(idx + 1)]] if idx > 0 else latent[:(index + 1)] for idx, index in
+                enumerate(reversed(index_list[:-1]))]
+        # for idx, val in enumerate(reversed(index_list)):
+        #     if idx == 0:
+        #         down += [latent[:(val + 1)]]
+        #     else:
+        #         down += [latent[val]]
 
-        dropout = False
+        self.down_sample = nn.ModuleList(down)
+        up = []
 
-        for idx in range(4):
-            in_ch = in_ch // 2
-            if idx == 1 and use_dropout is True:
-                dropout = True
-            num_chanels = in_ch + in_ch // 2
-            # if idx == 1:
-            #     num_chanels = in_ch
-            unet_block = ResUnetSkipConnectionBlock(in_ch, num_chanels, input_nc=None, submodule=unet_block,
-                                                    norm_layer=norm_layer, use_dropout=dropout,
-                                                    down_block=latent[index_list.pop(0)], dilation=dilation)
+        in_ch = 512
+        out_ch = in_ch // 2
+        skip = False
+        for idx, val in enumerate(reversed(index_list)):
+            if idx == 0:
+                norm = None
+            else:
+                norm = norm_layer
+                skip = True
 
-        self.model = ResUnetSkipConnectionBlock(output_nc, in_ch // 2, input_nc=input_nc,
-                                                submodule=unet_block, outermost=outermost, norm_layer=norm_layer,
-                                                down_block=latent[:(index_list.pop(0) + 1)], last_layer=last_layer)  # add the outermost layer
+            up += [nn.Sequential(nn.LeakyReLU(0.2),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, skip=skip, norm=norm))]
 
-    def forward(self, input):
-        """Standard forward"""
-        return self.model(input)
+            in_ch = out_ch
+            out_ch = in_ch // 2 if in_ch >= 64 else 64
+            if idx == (len(index_list) - 2):
+                out_ch = output_nc
+        self.up_sample = nn.ModuleList(up)
+
+    def forward(self, net):
+        downs = []
+        for idx, layer in enumerate(self.down_sample):
+            net = layer(net)
+            downs.append(net)
+
+        out = downs.pop(0)
+
+        # for idx, layer in enumerate(self.up_sample):
+        #     if idx > 0:
+        #         out = torch.cat([downs.pop(-1), out], dim=1)
+        #     out = layer(out)
+
+        return out
 
 
 class ResUnetSkipConnectionBlock(nn.Module):
@@ -572,7 +615,7 @@ class ResUnetSkipConnectionBlock(nn.Module):
 
 
 if __name__ == "__main__":
-    model = ResUnetGenerator(output_nc=3)
+    model = ResUnetGeneratorTest(output_nc=3)
     # model.train()
     # model = torch.nn.Sequential(*model.children())
     # print(model[0][0])

@@ -58,7 +58,7 @@ class Render:
             self.vertices -= self.py_scene.centroid
             bounds = self.tri_mesh.bounding_box_oriented.extents
 
-            self.vertices /= bounds
+            self.vertices /= [bounds[0]] * 3
             self.vertices += 1/2
 
     def render_visual(self, flags, face_id=None):

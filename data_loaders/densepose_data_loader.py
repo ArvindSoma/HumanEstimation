@@ -37,7 +37,7 @@ class SparsePointLoader(Dataset):
             read_file_name = '../data/dp_annotation/train.pkl'
 
         else:
-            read_file_name = '../data/dp_annotation/valminusminival.pkl'  # 'valminusminival'
+            read_file_name = '../data/dp_annotation/minival.pkl'  # 'valminusminival'
             self.point_select = 1
 
         with open(read_file_name, 'rb') as read_file:

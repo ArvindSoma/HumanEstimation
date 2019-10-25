@@ -54,10 +54,10 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_trial_ResNet_Dropout_1Head_1',
+    opt = parse_args(['--log_dir=../data/logs/sparse_trial_ResNet_Dropout_2Head_1',
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=100',
-                      '--num_heads=one'] + sys.argv[1:])
+                      '--num_heads=two'] + sys.argv[1:])
     main(opt=opt)
 

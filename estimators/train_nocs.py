@@ -165,9 +165,9 @@ class TrainNOCs:
         output = self.seg_net(batch['image'])
 
         # if 'mask_image' in batch.keys():
-        masked_output = output * (batch['mask_image'] > 0).float()
-        noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch)
-        total_loss += noc_loss
+        # masked_output = output * (batch['mask_image'] > 0).float()
+        noc_loss = self.criterion_l1_sparse(output=output, batch=batch)
+        total_loss += noc_loss * 50
         # loss = self.l1(masked_output, batch['noc_image'])
         background_target = torch.zeros_like(output)
         background_loss = self.l1(output * batch['background'], background_target)
@@ -180,9 +180,9 @@ class TrainNOCs:
     def forward_2_heads(self, batch):
         total_loss = 0
         output = self.seg_net(batch['image'])
-        masked_output = output[1] * (batch['mask_image'] > 0).float()
-        noc_loss = self.criterion_l1_sparse(output=masked_output, batch=batch) * 15
-        total_loss += noc_loss
+        # masked_output = output[1] * (batch['mask_image'] > 0).float()
+        noc_loss = self.criterion_l1_sparse(output=output[1], batch=batch)
+        total_loss += noc_loss * 50
         # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
         foreground = (1 - batch['background'][:, 0:2, :, :]).float()
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
