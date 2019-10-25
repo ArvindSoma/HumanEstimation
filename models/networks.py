@@ -474,6 +474,8 @@ class ResUnetGenerator(nn.Module):
         #         down += [latent[val: index_list[-(idx + 2)]]]
 
         self.down_sample = nn.ModuleList(down)
+        for param in self.down_sample.parameters():
+            param.requires_grad = False
         up = []
 
         in_ch = 512
@@ -548,6 +550,9 @@ class ResUnet2HeadGenerator(nn.Module):
         #         down += [latent[val: index_list[-(idx + 2)]]]
 
         self.down_sample = nn.ModuleList(down)
+
+        for param in self.down_sample.parameters():
+            param.requires_grad = False
         up = []
 
         in_ch = 512

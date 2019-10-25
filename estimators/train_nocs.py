@@ -51,7 +51,7 @@ class UnNormalize(object):
 
 
 class TrainNOCs:
-    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=5e-4,
+    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=2e-4,
                  betas=(0.5, 0.999), batch_size=8, checkpoint=None, model_type='res', output_heads='two'):
 
         if output_heads == 'one':
@@ -97,7 +97,7 @@ class TrainNOCs:
         self.criterion_selection = None
 
         self.lr = lr
-        self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr, betas=betas)
         # self.optimizer = torch.optim.SGD(params=self.seg_net.parameters(), lr=lr, momentum=0.5)
         if checkpoint is not None:
             checkpoint = torch.load(checkpoint)
