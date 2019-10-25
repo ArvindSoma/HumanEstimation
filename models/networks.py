@@ -492,13 +492,14 @@ class ResUnetGeneratorTest(nn.Module):
         #                                         submodule=unet_block, outermost=outermost, norm_layer=norm_layer,
         #                                         down_block=latent[:(index_list.pop(0) + 1)], last_layer=last_layer)
 
-        down = [latent[index: index_list[-(idx + 1)]] if idx > 0 else latent[:(index + 1)] for idx, index in
-                enumerate(reversed(index_list[:-1]))]
-        # for idx, val in enumerate(reversed(index_list)):
+        # down = []
+        down = [latent[index: index_list[-(idx + 2)]] if idx > 0 else latent[:(index + 1)] for idx, index in
+                enumerate(reversed(index_list[1:]))]
+        # for idx, val in enumerate(reversed(index_list[1:])):
         #     if idx == 0:
         #         down += [latent[:(val + 1)]]
         #     else:
-        #         down += [latent[val]]
+        #         down += [latent[val: index_list[-(idx + 2)]]]
 
         self.down_sample = nn.ModuleList(down)
         up = []
@@ -506,20 +507,21 @@ class ResUnetGeneratorTest(nn.Module):
         in_ch = 512
         out_ch = in_ch // 2
         skip = False
-        for idx, val in enumerate(reversed(index_list)):
+        for idx, val in enumerate(reversed(index_list[1:])):
             if idx == 0:
                 norm = None
             else:
                 norm = norm_layer
                 skip = True
 
-            up += [nn.Sequential(nn.LeakyReLU(0.2),
-                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, skip=skip, norm=norm))]
-
-            in_ch = out_ch
-            out_ch = in_ch // 2 if in_ch >= 64 else 64
             if idx == (len(index_list) - 2):
                 out_ch = output_nc
+
+            up += [nn.Sequential(nn.LeakyReLU(0.2),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm))]
+
+            in_ch = out_ch
+            out_ch = in_ch // 2 if in_ch > 64 else 64
         self.up_sample = nn.ModuleList(up)
 
     def forward(self, net):
@@ -528,12 +530,12 @@ class ResUnetGeneratorTest(nn.Module):
             net = layer(net)
             downs.append(net)
 
-        out = downs.pop(0)
+        out = downs.pop(-1)
 
-        # for idx, layer in enumerate(self.up_sample):
-        #     if idx > 0:
-        #         out = torch.cat([downs.pop(-1), out], dim=1)
-        #     out = layer(out)
+        for idx, layer in enumerate(self.up_sample):
+            if idx > 0:
+                out = torch.cat([downs.pop(-1), out], dim=1)
+            out = layer(out)
 
         return out
 
