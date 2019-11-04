@@ -102,7 +102,7 @@ class SparsePointLoader(Dataset):
                                                                                        background=background)
         data_dict['background'] = torch.from_numpy((background.transpose([2, 0, 1]) > 0).astype('float32'))
 
-        yx_loc = (yx_loc * [h_, w_] / [h, w]).astype('int')
+        yx_loc = (yx_loc * [h_, w_] / [h, w])
 
         loc_selection = np.where(
             ((c_h <= yx_loc[:, 0]) & (yx_loc[:, 0] < (c_h + self.crop_size))) & (
@@ -111,16 +111,16 @@ class SparsePointLoader(Dataset):
 
         noc_points = noc_points[loc_selection]
 
-        mask_image = np.zeros((self.crop_size, self.crop_size, 1))
-        mask_image[yx_loc[:, 0], yx_loc[:, 1], 0] = 1
+        # mask_image = np.zeros((self.crop_size, self.crop_size, 1))
+        # mask_image[yx_loc[:, 0], yx_loc[:, 1], 0] = 1
 
-        noc_image = np.ones((self.crop_size, self.crop_size, 3)) * -1
-        noc_image[yx_loc[:, 0], yx_loc[:, 1], :] = noc_points
+        # noc_image = np.ones((self.crop_size, self.crop_size, 3)) * -1
+        # noc_image[yx_loc[:, 0], yx_loc[:, 1], :] = noc_points
         num_points = np.array(yx_loc.shape[0])
         # num_points[num_points == 0] = 1
         data_dict['num_points'] = torch.from_numpy(num_points)
-        data_dict['mask_image'] = torch.from_numpy(mask_image.transpose([2, 0, 1]))
-        data_dict['noc_image'] = torch.from_numpy(noc_image.transpose([2, 0, 1]))
+        # data_dict['mask_image'] = torch.from_numpy(mask_image.transpose([2, 0, 1]))
+        # data_dict['noc_image'] = torch.from_numpy(noc_image.transpose([2, 0, 1]))
 
         total_pad = self.max_pad - num_points
 
@@ -130,7 +130,7 @@ class SparsePointLoader(Dataset):
         yx_loc = np.pad(yx_loc, pad_width=pad_width, mode='constant', constant_values=0)
 
         data_dict['noc_points'] = torch.from_numpy(noc_points)
-        data_dict['yx_loc'] = yx_loc
+        data_dict['yx_loc'] = torch.from_numpy(yx_loc)
 
         data_dict['image'] = self.transform(data_dict['image'])
 

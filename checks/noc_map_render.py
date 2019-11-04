@@ -17,6 +17,16 @@ import pyrender
 
 
 def main(opt):
+    ply_start = '''ply
+    format ascii 1.0
+    element vertex {}
+    property float x
+    property float y
+    property float z
+    property uchar red
+    property uchar green
+    property uchar blue
+    end_header\n'''
 
     model = body_models.create(model_path='../3d_data/models', model_type='smpl', gender='male', ext='pkl')
     smpl = pickle.load(open('../3d_data/densepose_uv.pkl', 'rb'))
@@ -55,6 +65,7 @@ def main(opt):
     aggregate_textures = np.array([], dtype='float64').reshape((0, 3, opt.image_height, opt.image_width))
 
     uv_render = Render(width=opt.image_width, height=opt.image_height)
+    store_aggregate = []
 
     for idx in range(1, 25):
         # face_select = faces[uv_faceid[:, 0] == idx, :]
@@ -72,12 +83,26 @@ def main(opt):
                     smpl_uv.interpolated[:, :, :-1] * (smpl_class_id.repeat([2], axis=-1) == idx)).reshape(
             (1,) + smpl_uv.interpolated[:, :, :-1].shape)])
 
+        store_aggregate.append(
+            [aggregate_textures[idx - 1, :, j, i] for i in range(aggregate_textures[idx - 1].shape[1]) for j in
+             range(aggregate_textures[idx - 1].shape[2])])
+
         # cv2.imshow("Part Texture", aggregate_textures[idx - 1].transpose([1, 2, 0]))
         # cv2.waitKey(0)
+    store_aggregate = np.concatenate(store_aggregate, axis=0)
+    print(store_aggregate.shape)
+    ply_start = ply_start.format(store_aggregate.shape[0])
+    color = (store_aggregate * 255).astype('uint8')
+    concatenated_smpl = np.concatenate((store_aggregate, color), axis=1)
+    # with open(opt.save_loc, 'w') as write_file:
+    #     write_file.write(ply_start)
+    #     np.savetxt(write_file, concatenated_smpl, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
     texture_map = torch.from_numpy(aggregate_textures)
 
     smpl_uv_stack = torch.from_numpy((smpl_uv_stack * 2) - 1)
+
+    store_aggregate = np.concatenate(store_aggregate, axis=0)
 
     output_textured_uv = 0
 
@@ -120,6 +145,7 @@ def parse_args(args):
     parser.add_argument('--znear', type=float, default=0, help='near plane')
     parser.add_argument('--zfar', type=float, default=10, help='far plane')
     parser.add_argument('--out_dir', type=str, required=True, help='directory to write results')
+    parser.add_argument('--save_loc', type=str, required=True, help='save_loc')
     return parser.parse_args(args)
 
 
@@ -134,6 +160,7 @@ if __name__ == '__main__':
         '--image_height=340',
         '--znear=0.05',
         '--zfar=5.05',
-        '--out_dir=./smplx-uvs'
+        '--out_dir=./smplx-uvs',
+        '--save_loc=../3d_data/NOC_check.ply'
     ])
     main(opt)

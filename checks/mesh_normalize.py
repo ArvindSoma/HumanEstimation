@@ -68,7 +68,7 @@ def main(opt):
     verts -= scene.centroid
     bounds = tri_mesh.bounding_box_oriented.extents
 
-    verts /= bounds
+    verts /= [bounds[0]] * 3
 
     verts = (verts + 1/2)
 

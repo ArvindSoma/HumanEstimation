@@ -30,6 +30,17 @@ def GetDensePoseMask(Polys):
 
 
 def main(opt):
+    ply_start = '''ply
+format ascii 1.0
+element vertex {}
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header\n'''
+
     coco_folder = os.environ['COCO']
     save_annotation_file = opt.output
 
@@ -38,12 +49,12 @@ def main(opt):
     annotation_dict = {'minival': [COCO(coco_folder + '/annotations/densepose_coco_2014_minival.json'),
                                    COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
                                    'val2014'],
-                       'valminusminival': [COCO(coco_folder + '/annotations/densepose_coco_2014_valminusminival.json'),
-                                           COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
-                                           'val2014'],
                        'train': [COCO(coco_folder + '/annotations/densepose_coco_2014_train.json'),
                                  COCO(coco_folder + '/annotations/person_keypoints_train2014.json'),
                                  'train2014'],
+                       'valminusminival': [COCO(coco_folder + '/annotations/densepose_coco_2014_valminusminival.json'),
+                                           COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
+                                           'val2014'],
                        'test': [COCO(coco_folder + '/annotations/densepose_coco_2014_test.json'),
                                 'test2014']}
 
@@ -83,7 +94,7 @@ def main(opt):
     uv_render = Render(width=opt.image_width, height=opt.image_height)
 
     kernel = np.ones((3, 3), np.uint8)
-
+    store_aggregate = []
     for idx in range(1, 25):
         # face_select = faces[uv_faceid[:, 0] == idx, :]
         id_select = np.unique(np.hstack(
@@ -95,9 +106,29 @@ def main(opt):
 
         out_view = np.flip(uv_render.render_interpolate(vertices=smpl_norm_vertices).interpolated.transpose([2, 0, 1]),
                            axis=1)
+
+        # cv2.imshow("Out_view", out_view.transpose([1, 2, 0]))
+        # cv2.waitKey(0)
+        if out_view.max() > 1 or out_view.min() < 0:
+            print('Error!!')
         aggregate_textures = np.concatenate([aggregate_textures, out_view.reshape((1,) + out_view.shape)])
+        store_aggregate.append(
+            [aggregate_textures[idx - 1, :, j, i] for i in range(aggregate_textures[idx - 1].shape[1]) for j in
+             range(aggregate_textures[idx - 1].shape[2]) if aggregate_textures[idx - 1, :, j, i].all() != 0])
+
+    # cv2.destroyWindow("Out_view")
+
+    store_aggregate = np.concatenate(store_aggregate, axis=0)
+    print('Shape of all vertices: ', store_aggregate.shape)
+    ply_start = ply_start.format(store_aggregate.shape[0])
+    color = (store_aggregate * 255).astype('uint8')
+    concatenated_smpl = np.concatenate((store_aggregate, color), axis=1)
+    with open('../3d_data/NOC_check.ply', 'w') as write_file:
+        write_file.write(ply_start)
+        np.savetxt(write_file, concatenated_smpl, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
     texture_map = torch.from_numpy(aggregate_textures)
+    texture_map = texture_map.clamp(min=0, max=1)
 
     print("SMPL textures loaded in memory.\n")
 
@@ -137,9 +168,11 @@ def main(opt):
             point_dict['yx'] = np.array([], dtype='int').reshape((0, 2))
             point_dict['iuv'] = np.array([]).reshape((0, 3))
 
-            xy_mask = np.zeros((image.shape[0], image.shape[1], 1))
-            zero_point_iuv = np.zeros_like(image)
-            zero_point_uv = np.zeros((24, image.shape[0], image.shape[1], 2))
+            # xy_mask = np.zeros((image.shape[0], image.shape[1], 1))
+            # zero_point_iuv = np.zeros_like(image)
+            # zero_point_uv = np.zeros((24, image.shape[0], image.shape[1], 2))
+            # index_count = np.array([0] * 24)
+            # iuv_values = np.zeros((24, 2000, 2))
 
             for person_ann in person_anns:
                 person_seg += person_coco.annToMask(person_ann)
@@ -148,7 +181,8 @@ def main(opt):
 
                 if 'dp_masks' in ann.keys():
 
-                    bbr = (np.array(ann['bbox'])).astype('int')
+                    bbr = np.array(ann['bbox']).astype(int)
+                    # print(bbr)
                     mask = GetDensePoseMask(ann['dp_masks'])
                     x1, y1, x2, y2 = bbr[0], bbr[1], bbr[0] + bbr[2], bbr[1] + bbr[3]
                     x2 = min([x2, image.shape[1]])
@@ -156,12 +190,19 @@ def main(opt):
 
                     mask_im = cv2.resize(mask, (int(x2 - x1), int(y2 - y1)), interpolation=cv2.INTER_NEAREST)
                     # mask_bool = np.tile((mask_im == 0)[:, :, np.newaxis], [1, 1, 3])
-                    zero_im[y1:y2, x1:x2] += mask_im
+                    # zero_im[y1:y2, x1:x2] += mask_im
+                    zero_im[int(y1): (int(y1) + int(y2 - y1)), int(x1): (int(x1) + int(x2 - x1))] += mask_im
 
-                    img_x = np.array(ann['dp_x']) / 255. * bbr[2] + x1    # Stretch the points to current box.
-                    img_y = np.array(ann['dp_y']) / 255. * bbr[3] + y1    # Stretch the points to current box.
+                    # Stretch the points to current box.
+                    img_x = np.array(ann['dp_x']) / 255. * bbr[2] + x1
+                    img_y = np.array(ann['dp_y']) / 255. * bbr[3] + y1
                     img_x = img_x.astype('int') - 1 * (img_x >= image.shape[1])
+                    # img_x = img_x - 1 * (img_x >= image.shape[1])
                     img_y = img_y.astype('int') - 1 * (img_y >= image.shape[0])
+                    # img_x = img_x.clip(0, image.shape[1] - 1).astype('int')
+                    # img_y = img_y.clip(0, image.shape[0] - 1).astype('int')
+                    # if img_x.any() == 0 or img_y.any() == 0:
+                    #     print ("It reached 0!!")
 
                     point_dict['yx'] = np.concatenate([point_dict['yx'], np.array([img_y, img_x]).T])
 
@@ -170,21 +211,46 @@ def main(opt):
                     point_v = np.array(ann['dp_V'])
                     point_dict['iuv'] = np.concatenate((point_dict['iuv'], np.array([point_i, point_u, point_v]).T))
 
-                    zero_point_iuv[img_y, img_x, :] = np.array([point_i, point_u, point_v]).T
+                    # zero_point_iuv[img_y, img_x, :] = np.array([point_i, point_u, point_v]).T
+                    # xy_mask[img_y, img_x, 0] = 1
+                    # zero_point_uv[point_i - 1, img_y, img_x] = np.array([point_u, point_v]).T
+                    #
+                    # iuv_values[point_i.astype('int') - 1, index_count[point_i.astype('int') - 1], :] = np.array(
+                    #     [point_u, point_v]).T
+                    # index_count[point_i.astype('int') - 1] += 1
 
-                    xy_mask[img_y, img_x, 0] = 1
 
-                    zero_point_uv[point_i - 1, img_y, img_x] = np.array([point_u, point_v]).T
+            # uv_stack = torch.from_numpy((zero_point_uv * 2) - 1)
+            # uv_stack = uv_stack.clamp(min=-1, max=1)
 
-            uv_stack = torch.from_numpy((zero_point_uv * 2) - 1)
+            # output_noc = 0
+            # for jdx in range(0, 24):
+            #     output_noc += torch.nn.functional.grid_sample(texture_map[jdx: jdx + 1],
+            #                                                           uv_stack[jdx: jdx + 1],
+            #                                                           mode='bilinear', padding_mode='border')
+            #
+            # output_noc = output_noc[0].cpu().numpy().transpose([1, 2, 0])
 
-            output_noc = 0
-            for idx in range(0, 24):
-                output_noc += torch.nn.functional.grid_sample(texture_map[idx: idx + 1],
-                                                                      uv_stack[idx: idx + 1],
-                                                                      mode='bilinear', padding_mode='border')
+            output_noc = np.zeros_like(point_dict['iuv'])
+            # if point_dict['iuv'].shape[0] > 0:
+            for jdx in range(0, 24):
+                zero_point_dict = np.zeros((point_dict['iuv'].shape[0], ) + (2,))
+                zero_point_dict[point_dict['iuv'][:, 0] == (jdx + 1), :] = point_dict['iuv'][
+                                                                           point_dict['iuv'][:, 0] == (jdx + 1), 1:]
 
-            output_noc = output_noc[0].cpu().numpy().transpose([1, 2, 0])
+                zero_point_dict = zero_point_dict.reshape((1, 1,) + zero_point_dict.shape)
+
+                zero_point_dict = torch.from_numpy((zero_point_dict * 2) - 1)
+                zero_point_dict = zero_point_dict.clamp(-1, 1)
+
+                output_noc_temp = torch.nn.functional.grid_sample(texture_map[jdx: jdx + 1],
+                                                                  zero_point_dict,
+                                                                  mode='bilinear', padding_mode='border')
+
+                output_noc_temp = output_noc_temp.cpu().numpy().transpose([0, 2, 3, 1]).reshape(output_noc.shape)
+
+                output_noc[point_dict['iuv'][:, 0] == (jdx + 1), :] = output_noc_temp[
+                                                                      point_dict['iuv'][:, 0] == (jdx + 1), :]
 
             zero_im = zero_im + person_seg
 
@@ -192,8 +258,18 @@ def main(opt):
             zero_im = cv2.dilate(zero_im, kernel, iterations=1)
 
             cv2.imwrite(os.path.join(seg_key_path,  im['file_name']), (zero_im == 0.0).astype('uint8'))
+            if point_dict['yx'].shape[0] > 0:
+                if point_dict['yx'].min() == 0:
+                    print('Min 0!')
+                uniques, counts = np.unique(point_dict['yx'], axis=0, return_counts=True)
+                if counts.max() > 1:
+                    print("Lot of YXs!.")
 
-            point_dict['noc'] = output_noc[point_dict['yx'][:, 0], point_dict['yx'][:, 1], :]
+            # point_dict['noc'] = output_noc[point_dict['yx'][:, 0], point_dict['yx'][:, 1], :]
+            point_dict['noc'] = output_noc
+            # if point_dict['noc'].shape[0] > 0:
+            #     if point_dict['noc'].min() < smpl_norm_vertices.min() or point_dict['noc'].max() > smpl_norm_vertices.max():
+            #         print("Error at idx {}.".format(idx))
             # print(np.min(point_dict['yx']))
             key_list.append(im_dict)
 

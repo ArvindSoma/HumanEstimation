@@ -51,10 +51,10 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResUNet_Dropout_2Head_1',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_test_ResUNet_Dropout_2Head_3',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_trial_ResUNet_Dropout_2Head_1/save_19829.pth',
+                      '--checkpoint=../saves/sparse_sampled_train_ResUNet_Dropout_2Head_2/save_33049.pth',
                       '--num_heads=two',
                       '--model_type=res_unet'] + sys.argv[1:])
     main(opt=opt)
