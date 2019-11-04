@@ -51,7 +51,7 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResUNet_Dropout_2Head_1',
+    opt = parse_args(['--log_dir=../data/logs/sparse_test_ResUNet_Dropout_2Head_Old',
                       '--log_iter=200',
                       '--batch_size=8',
                       '--checkpoint=../saves/sparse_trial_ResUNet_Dropout_2Head_1/save_19829.pth',
