@@ -160,7 +160,7 @@ class TrainNOCs:
                 batch_size -= 1
                 continue
             noc_points = batch['noc_points'][idx, :num[idx, 0], :]
-            noc_points = torch.transpose(noc_points, 1, 2)
+            noc_points = torch.transpose(noc_points, 0, 1)
             sub += self.l1(output[idx, :, batch['yx_loc'][idx, :num[idx, 0], 0], batch['yx_loc'][idx, :num[idx, 0], 1]],
                            noc_points)
 
