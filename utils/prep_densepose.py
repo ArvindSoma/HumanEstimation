@@ -111,6 +111,7 @@ end_header\n'''
                            axis=1)
 
         out_view[out_view < 0] = 0
+        # cv2.imshow("Out_view2", out_view.transpose([1, 2, 0]))
 
         new_view = np.zeros_like(out_view)
         out_view = np.pad(out_view, pad_width=[(0, 0), (2, 2), (2, 2)], mode='constant')
@@ -129,7 +130,7 @@ end_header\n'''
 
         out_view = new_view
 
-        # cv2.imshow("Out_view", out_view.transpose([1, 2, 0]))
+        # cv2.imshow("Out_view2", out_view.transpose([1, 2, 0]))
         # cv2.waitKey(0)
         if out_view.max() > 1 or out_view.min() < 0:
             print('Error!!')
