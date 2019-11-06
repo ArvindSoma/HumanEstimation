@@ -187,7 +187,7 @@ end_header\n'''
 
             person_seg = np.zeros((image.shape[0], image.shape[1]))
             point_dict = im_dict['points']
-            point_dict['yx'] = np.array([], dtype='int').reshape((0, 2))
+            point_dict['yx'] = np.array([]).reshape((0, 2))
             point_dict['iuv'] = np.array([]).reshape((0, 3))
 
             # xy_mask = np.zeros((image.shape[0], image.shape[1], 1))
@@ -221,8 +221,8 @@ end_header\n'''
                     # img_x = img_x.astype('int') - 1 * (img_x >= image.shape[1])
                     # img_x = img_x - 1 * (img_x >= image.shape[1])
                     # img_y = img_y.astype('int') - 1 * (img_y >= image.shape[0])
-                    img_x = img_x.clip(0, image.shape[1] - 1).astype('int')
-                    img_y = img_y.clip(0, image.shape[0] - 1).astype('int')
+                    img_x = img_x.clip(0, image.shape[1] - 1)
+                    img_y = img_y.clip(0, image.shape[0] - 1)
                     # if img_x.any() == 0 or img_y.any() == 0:
                     #     print ("It reached 0!!")
 
