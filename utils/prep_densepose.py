@@ -203,7 +203,7 @@ end_header\n'''
 
                 if 'dp_masks' in ann.keys():
 
-                    bbr = np.array(ann['bbox']).astype(int)
+                    bbr = np.array(ann['bbox'])
                     # print(bbr)
                     mask = GetDensePoseMask(ann['dp_masks'])
                     x1, y1, x2, y2 = bbr[0], bbr[1], bbr[0] + bbr[2], bbr[1] + bbr[3]
@@ -218,11 +218,11 @@ end_header\n'''
                     # Stretch the points to current box.
                     img_x = np.array(ann['dp_x']) / 255. * bbr[2] + x1
                     img_y = np.array(ann['dp_y']) / 255. * bbr[3] + y1
-                    img_x = img_x.astype('int') - 1 * (img_x >= image.shape[1])
+                    # img_x = img_x.astype('int') - 1 * (img_x >= image.shape[1])
                     # img_x = img_x - 1 * (img_x >= image.shape[1])
-                    img_y = img_y.astype('int') - 1 * (img_y >= image.shape[0])
-                    # img_x = img_x.clip(0, image.shape[1] - 1).astype('int')
-                    # img_y = img_y.clip(0, image.shape[0] - 1).astype('int')
+                    # img_y = img_y.astype('int') - 1 * (img_y >= image.shape[0])
+                    img_x = img_x.clip(0, image.shape[1] - 1).astype('int')
+                    img_y = img_y.clip(0, image.shape[0] - 1).astype('int')
                     # if img_x.any() == 0 or img_y.any() == 0:
                     #     print ("It reached 0!!")
 

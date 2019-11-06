@@ -162,7 +162,7 @@ class TrainNOCs:
             # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
             # selected_noc = selected_noc.view((1,) + selected_noc.shape)
             sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,
-                                           mode='nearest', padding_mode='border')
+                                           mode='bilinear', padding_mode='border')
             sampled_indices = sampled_indices.view(3, num[idx, 0])
             sampled_indices = torch.transpose(sampled_indices, 0, 1)
             sub += self.l2(sampled_indices, selected_noc)
@@ -210,7 +210,7 @@ class TrainNOCs:
             # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
             # selected_noc = selected_noc.view((1,) + selected_noc.shape)
             sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,
-                                           mode='nearest', padding_mode='border')
+                                           mode='bilinear', padding_mode='border')
             sampled_indices = sampled_indices.view(3, num[idx, 0])
             sampled_indices = torch.transpose(sampled_indices, 0, 1)
             sub += self.l1(sampled_indices, selected_noc)
