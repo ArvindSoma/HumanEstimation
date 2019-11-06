@@ -138,9 +138,10 @@ class TrainNOCs:
             if num[idx, 0] == 0:
                 batch_size -= 1
                 continue
+            noc_points = batch['noc_points'][idx, :num[idx, 0], :]
+            noc_points = torch.transpose(noc_points, 0, 1)
             sub += self.l2(output[idx, :, batch['yx_loc'][idx, :num[idx, 0], 0], batch['yx_loc'][idx, :num[idx, 0], 1]],
-                           batch['noc_image'][idx, :, batch['yx_loc'][idx, :num[idx, 0], 0],
-                           batch['yx_loc'][idx, :num[idx, 0], 1]])
+                           noc_points)
 
         return sub / batch_size
 
