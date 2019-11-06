@@ -99,7 +99,7 @@ class TrainNOCs:
         self.criterion_noc = self.criterion_l1_sparse_bilinear
 
         self.lr = lr
-        self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr, betas=betas)
+        self.optimizer = torch.optim.Adam(params=self.seg_net.parameters(), lr=lr)
         # self.optimizer = torch.optim.SGD(params=self.seg_net.parameters(), lr=lr, momentum=0.5)
         if checkpoint is not None:
             checkpoint = torch.load(checkpoint)
@@ -158,11 +158,13 @@ class TrainNOCs:
                 continue
             selected_xy = xy_loc[idx, :num[idx, 0], :]
             selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
-            selected_noc = batch['noc_points'][idx: idx + 1, :num[idx, 0]]
-            selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
-            selected_noc = selected_noc.view((1,) + selected_noc.shape)
+            selected_noc = batch['noc_points'][idx, :num[idx, 0], :]
+            # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
+            # selected_noc = selected_noc.view((1,) + selected_noc.shape)
             sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,
                                            mode='nearest', padding_mode='border')
+            sampled_indices = sampled_indices.view(3, num[idx, 0])
+            sampled_indices = torch.transpose(sampled_indices, 0, 1)
             sub += self.l2(sampled_indices, selected_noc)
 
         return sub / batch_size
@@ -204,11 +206,13 @@ class TrainNOCs:
                 continue
             selected_xy = xy_loc[idx, :num[idx, 0], :]
             selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
-            selected_noc = batch['noc_points'][idx: idx + 1, :num[idx, 0]]
-            selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
-            selected_noc = selected_noc.view((1,) + selected_noc.shape)
+            selected_noc = batch['noc_points'][idx, :num[idx, 0], :]
+            # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
+            # selected_noc = selected_noc.view((1,) + selected_noc.shape)
             sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,
                                            mode='nearest', padding_mode='border')
+            sampled_indices = sampled_indices.view(3, num[idx, 0])
+            sampled_indices = torch.transpose(sampled_indices, 0, 1)
             sub += self.l1(sampled_indices, selected_noc)
 
         return sub / batch_size
@@ -235,7 +239,7 @@ class TrainNOCs:
         output = self.seg_net(batch['image'])
         # masked_output = output[1] * (batch['mask_image'] > 0).float()
         noc_loss = self.criterion_noc(output=output[1], batch=batch)
-        total_loss += noc_loss * 50
+        total_loss += noc_loss * 100
         # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
         foreground = (1 - batch['background'][:, 0:2, :, :]).float()
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
@@ -279,35 +283,41 @@ class TrainNOCs:
                 out_arr = output[1]
             else:
                 out_arr = output
+            selected_yx = batch['yx_loc'][pdx, :num[pdx, 0], :].long()
+
             selected_xy = xy_loc[pdx, :num[pdx, 0], :]
             selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
             # selected_noc = batch['noc_points'][pdx: pdx + 1, :num[pdx, 0]]
             # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
             # selected_noc = selected_noc.view((1,) + selected_noc.shape)
-            image = self.sampler(input=batch['image'][pdx: pdx + 1], grid=selected_xy,
-                                 mode='nearest', padding_mode='border')
+            sampled_image = self.sampler(input=batch['image'][pdx: pdx + 1], grid=selected_xy,
+                                         mode='bilinear', padding_mode='border')
+            sampled_image = sampled_image.view(3, num[pdx, 0])
+            sampled_image = sampled_image.cpu().numpy().T * 255
+            sampled_image = sampled_image[:, [2, 1, 0]]
             output_arr = self.sampler(input=out_arr[pdx: pdx + 1], grid=selected_xy,
-                                      mode='nearest', padding_mode='border')
-            # image = batch['image'][pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
+                                      mode='bilinear', padding_mode='border')
+            # image = batch['image'][pdx, :, selected_yx[:, 0], selected_yx[:, 1]]
             # output_arr = out_arr[pdx, :, batch['yx_loc'][pdx, :num[pdx, 0], 0], batch['yx_loc'][pdx, :num[pdx, 0], 1]]
             noc_gt = batch['noc_points'][pdx, :num[pdx, 0], :].cpu().numpy()
-            image = image.view(num[pdx, 0], 3)
-            image = image.cpu().numpy() * 255
-            output_arr = output_arr.view(num[pdx, 0], 3)
-            output_arr = output_arr.cpu().numpy()
+            # image = image.view(3, num[pdx, 0])
+            # image = image.cpu().numpy().T * 255
+            # image = image[:, [2, 1, 0]]
+            output_arr = output_arr.view(3, num[pdx, 0])
+            output_arr = output_arr.cpu().numpy().T
 
-            image = image.astype('uint8')
-            output_arr = output_arr.astype('uint8')
+            # image = image.astype('uint8')
+            # output_arr = output_arr.astype('uint8')
 
             # image = image[:, [2, 1, 0]] * 255
             # output_arr = output_arr.cpu().numpy().T
 
             start = self.ply_start.format(num[pdx, 0].item())
-            concatenated_out = np.concatenate((output_arr, image), axis=1)
-            concatenated_gt = np.concatenate((noc_gt, image), axis=1)
-            image = batch['image'][pdx, :, :, :].cpu().numpy()
-            image = image.transpose(1, 2, 0) * 255
-            cv2.imwrite(os.path.join(ply_dir, 'Ground_truth_{}.png'.format(idx + pdx)), image.astype('uint8'))
+            concatenated_out = np.concatenate((output_arr, sampled_image), axis=1)
+            concatenated_gt = np.concatenate((noc_gt, sampled_image), axis=1)
+            gt_image = batch['image'][pdx, :, :, :].cpu().numpy()
+            gt_image = gt_image.transpose(1, 2, 0) * 255
+            cv2.imwrite(os.path.join(ply_dir, 'Ground_truth_{}.png'.format(idx + pdx)), gt_image.astype('uint8'))
             with open(os.path.join(ply_dir, 'Output_{}.ply'.format(idx + pdx)), 'w') as write_file:
                 write_file.write(start)
                 np.savetxt(write_file, concatenated_out, fmt=' '.join(['%0.12f'] * 3 + ['%d'] * 3))
@@ -328,11 +338,11 @@ class TrainNOCs:
                     batch[keys] = batch[keys].float().cuda()
 
                 output, losses = self.forward(batch=batch)
-                batch['image'] = batch['image'] * 2 - 1
 
                 #  View NOC as PLY
                 if write_ply:
                     self.write_noc_ply(output=output, batch=batch, idx=idx, ply_dir=ply_dir)
+                    batch['image'] = batch['image'] * 2 - 1
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
                               name="Validation", niter=idx, foreground=self.foreground, viz_loss=False)
 
@@ -354,6 +364,7 @@ class TrainNOCs:
                     # batch['image'] = self.un_norm(batch['image'])
 
                     test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
+                    batch['image'] = batch['image'] * 2 - 1
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
                               name="Validation", niter=niter, foreground=self.foreground)
 

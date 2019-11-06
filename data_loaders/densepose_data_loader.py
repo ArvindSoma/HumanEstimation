@@ -102,7 +102,7 @@ class SparsePointLoader(Dataset):
                                                                                        background=background)
         data_dict['background'] = torch.from_numpy((background.transpose([2, 0, 1]) > 0).astype('float32'))
 
-        yx_loc = (yx_loc * [h_, w_] / [h, w])
+        yx_loc = (yx_loc * [h_, w_] / [h, w]).astype('int')
 
         loc_selection = np.where(
             ((c_h <= yx_loc[:, 0]) & (yx_loc[:, 0] < (c_h + self.crop_size))) & (

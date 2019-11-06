@@ -78,6 +78,7 @@ def main(opt):
         # out_view = uv_render.render_visual(flags=pyrender.RenderFlags.SKIP_CULL_FACES)
         out_view = np.flip(uv_render.render_interpolate(vertices=smpl_norm_vertices).interpolated.transpose([2, 0, 1]),
                            axis=1)
+        print("Out-view idx: {} | max: {} | min: {}".format(idx, np.max(out_view), np.min(out_view)))
         aggregate_textures = np.concatenate([aggregate_textures, out_view.reshape((1,) + out_view.shape)])
         smpl_uv_stack = np.concatenate([smpl_uv_stack, (
                     smpl_uv.interpolated[:, :, :-1] * (smpl_class_id.repeat([2], axis=-1) == idx)).reshape(

@@ -76,11 +76,13 @@ end_header\n'''
             noc_gt = noc_gt.cpu().numpy()
             sampled_image = sampler(input=batch['image'][pdx: pdx + 1], grid=selected_xy,
                                     mode='nearest', padding_mode='border')
-            sampled_image = sampled_image.view(num[pdx, 0], 3)
-            sampled_image = sampled_image.cpu().numpy() * 255
-            selected_image = batch['image'][pdx: pdx + 1, :, selected_yx[:, 0], selected_yx[:, 1]]
-            selected_image = selected_image.view(num[pdx, 0], 3)
-            selected_image = selected_image.cpu().numpy() * 255
+            sampled_image = sampled_image.view(3, num[pdx, 0])
+            sampled_image = sampled_image.cpu().numpy().T * 255
+            sampled_image = sampled_image[:, [2, 1, 0]]
+            selected_image = batch['image'][pdx, :, selected_yx[:, 0], selected_yx[:, 1]]
+            # selected_image = selected_image.view(num[pdx, 0], 3)
+            selected_image = selected_image.cpu().numpy().T * 255
+            selected_image = selected_image[:, [2, 1, 0]]
             sampled_gt = np.concatenate((noc_gt, sampled_image), axis=1)
             selected_gt = np.concatenate((noc_gt, selected_image), axis=1)
 

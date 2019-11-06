@@ -94,6 +94,9 @@ end_header\n'''
     uv_render = Render(width=opt.image_width, height=opt.image_height)
 
     kernel = np.ones((3, 3), np.uint8)
+
+    filter_size = 5
+
     store_aggregate = []
     for idx in range(1, 25):
         # face_select = faces[uv_faceid[:, 0] == idx, :]
@@ -106,6 +109,25 @@ end_header\n'''
 
         out_view = np.flip(uv_render.render_interpolate(vertices=smpl_norm_vertices).interpolated.transpose([2, 0, 1]),
                            axis=1)
+
+        out_view[out_view < 0] = 0
+
+        new_view = np.zeros_like(out_view)
+        out_view = np.pad(out_view, pad_width=[(0, 0), (2, 2), (2, 2)], mode='constant')
+
+        for mdx in range(out_view.shape[1] - filter_size):
+            for ndx in range(out_view.shape[2] - filter_size):
+                if (out_view[:,  mdx + 2, ndx + 2] > 0).any():
+                    new_view[:, mdx, ndx] = out_view[:, mdx + 2, ndx + 2]
+                else:
+                    select_filter = out_view[:, mdx: mdx + filter_size, ndx: ndx + filter_size]
+                    select_filter = select_filter[:, np.sum(select_filter, axis=0) > 0]
+                    if select_filter.shape[1] == 0:
+                        new_view[:, mdx, ndx] = 0
+                    else:
+                        new_view[:, mdx, ndx] = np.sum(select_filter, axis=1) / select_filter.shape[1]
+
+        out_view = new_view
 
         # cv2.imshow("Out_view", out_view.transpose([1, 2, 0]))
         # cv2.waitKey(0)
