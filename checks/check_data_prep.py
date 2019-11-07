@@ -49,14 +49,15 @@ end_header\n'''
     annotation_dict = {'minival': [COCO(coco_folder + '/annotations/densepose_coco_2014_minival.json'),
                                    COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
                                    'val2014'],
-                       'train': [COCO(coco_folder + '/annotations/densepose_coco_2014_train.json'),
-                                 COCO(coco_folder + '/annotations/person_keypoints_train2014.json'),
-                                 'train2014'],
-                       'valminusminival': [COCO(coco_folder + '/annotations/densepose_coco_2014_valminusminival.json'),
-                                           COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
-                                           'val2014'],
-                       'test': [COCO(coco_folder + '/annotations/densepose_coco_2014_test.json'),
-                                'test2014']}
+                       # 'train': [COCO(coco_folder + '/annotations/densepose_coco_2014_train.json'),
+                       #           COCO(coco_folder + '/annotations/person_keypoints_train2014.json'),
+                       #           'train2014'],
+                       # 'valminusminival': [COCO(coco_folder + '/annotations/densepose_coco_2014_valminusminival.json'),
+                       #                     COCO(coco_folder + '/annotations/person_keypoints_val2014.json'),
+                       #                     'val2014'],
+                       # 'test': [COCO(coco_folder + '/annotations/densepose_coco_2014_test.json'),
+                       #          'test2014']
+                       }
 
     #################################
 
@@ -150,11 +151,10 @@ end_header\n'''
 
     store_aggregate = np.concatenate(store_aggregate, axis=0)
     print('Shape of all vertices: ', store_aggregate.shape)
-    ply_start = ply_start.format(store_aggregate.shape[0])
     color = (store_aggregate * 255).astype('uint8')
     concatenated_smpl = np.concatenate((store_aggregate, color), axis=1)
     with open('../3d_data/NOC_check.ply', 'w') as write_file:
-        write_file.write(ply_start)
+        write_file.write(ply_start.format(store_aggregate.shape[0]))
         np.savetxt(write_file, concatenated_smpl, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
     texture_map = torch.from_numpy(aggregate_textures)
@@ -173,7 +173,7 @@ end_header\n'''
         if not os.path.exists(seg_key_path):
             os.mkdir(seg_key_path)
 
-        im_ids = dp_coco.getImgIds()
+        im_ids = dp_coco.getImgIds()[28:]
         # len_ids = len(im_ids)
         key_list = []
         for idx, im_id in enumerate(tqdm(im_ids, desc="Key [{}] Progress".format(key), ncols=100)):
@@ -241,62 +241,60 @@ end_header\n'''
                     point_v = np.array(ann['dp_V'])
                     point_dict['iuv'] = np.concatenate((point_dict['iuv'], np.array([point_i, point_u, point_v]).T))
 
-                    # zero_point_iuv[img_y, img_x, :] = np.array([point_i, point_u, point_v]).T
-                    # xy_mask[img_y, img_x, 0] = 1
-                    # zero_point_uv[point_i - 1, img_y, img_x] = np.array([point_u, point_v]).T
-                    #
-                    # iuv_values[point_i.astype('int') - 1, index_count[point_i.astype('int') - 1], :] = np.array(
-                    #     [point_u, point_v]).T
-                    # index_count[point_i.astype('int') - 1] += 1
-
-
-            # uv_stack = torch.from_numpy((zero_point_uv * 2) - 1)
-            # uv_stack = uv_stack.clamp(min=-1, max=1)
-
-            # output_noc = 0
-            # for jdx in range(0, 24):
-            #     output_noc += torch.nn.functional.grid_sample(texture_map[jdx: jdx + 1],
-            #                                                           uv_stack[jdx: jdx + 1],
-            #                                                           mode='bilinear', padding_mode='border')
-            #
-            # output_noc = output_noc[0].cpu().numpy().transpose([1, 2, 0])
-
-            output_noc = np.zeros_like(point_dict['iuv'])
-            # if point_dict['iuv'].shape[0] > 0:
-            for jdx in range(0, 24):
-                zero_point_dict = np.zeros((point_dict['iuv'].shape[0], ) + (2,))
-                zero_point_dict[point_dict['iuv'][:, 0] == (jdx + 1), :] = point_dict['iuv'][
-                                                                           point_dict['iuv'][:, 0] == (jdx + 1), 1:]
-
-                zero_point_dict = zero_point_dict.reshape((1, 1,) + zero_point_dict.shape)
-
-                zero_point_dict = torch.from_numpy((zero_point_dict * 2) - 1)
-                # zero_point_dict = zero_point_dict.clamp(-1, 1)
-
-                output_noc_temp = torch.nn.functional.grid_sample(texture_map[jdx: jdx + 1],
-                                                                  zero_point_dict,
+            for jdx, point in enumerate(point_dict['iuv']):
+                point_select = point[1:].reshape((1, 1, 1, 2))
+                index = point[0]
+                yx = (point[1:] + 1) / 2 * 339
+                if jdx is 18:
+                    print("Image loc: ", yx)
+                    texture = texture_map[int(index - 1)]
+                    texture = texture.cpu().numpy().transpose(1, 2, 0)
+                    texture[int(round(yx[0])), int(round(yx[1])), :] = 1.
+                    # cv2.imshow("texture_map", texture)
+                    cv2.imwrite('../3d_data/check_point.png', (texture * 255).astype('uint8'))
+                    # cv2.waitKey(0)
+                    break
+                point_select = torch.from_numpy((point_select * 2) - 1)
+                output_noc_temp = torch.nn.functional.grid_sample(texture_map[int(index - 1): int(index)],
+                                                                  point_select,
                                                                   mode='bilinear', padding_mode='border')
 
-                output_noc_temp = output_noc_temp.cpu().numpy().transpose([0, 2, 3, 1]).reshape(output_noc.shape)
+                output_noc_temp = output_noc_temp.cpu().numpy().transpose([0, 2, 3, 1]).reshape(3)
 
-                output_noc[point_dict['iuv'][:, 0] == (jdx + 1), :] = output_noc_temp[
-                                                                      point_dict['iuv'][:, 0] == (jdx + 1), :]
+                output_ply = np.concatenate((output_noc_temp, np.array([255, 255, 255])))
+                output_ply = output_ply.reshape((1,) + output_ply.shape)
+                with open('../3d_data/check_point.ply', 'w') as out_file:
+                    out_file.write(ply_start.format(1))
+                    np.savetxt(out_file, output_ply, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
+            break
+            # output_noc = np.zeros_like(point_dict['iuv'])
+            # # if point_dict['iuv'].shape[0] > 0:
+            # for jdx in range(0, 24):
+            #     zero_point_dict = np.zeros((point_dict['iuv'].shape[0],) + (2,))
+            #     zero_point_dict[point_dict['iuv'][:, 0] == (jdx + 1), :] = point_dict['iuv'][
+            #                                                                point_dict['iuv'][:, 0] == (jdx + 1), 1:]
+            #
+            #     zero_point_dict = zero_point_dict.reshape((1, 1,) + zero_point_dict.shape)
+            #
+            #     zero_point_dict = torch.from_numpy((zero_point_dict * 2) - 1)
+            #     # zero_point_dict = zero_point_dict.clamp(-1, 1)
+            #
+            #     output_noc_temp = torch.nn.functional.grid_sample(texture_map[jdx: jdx + 1],
+            #                                                       zero_point_dict,
+            #                                                       mode='bilinear', padding_mode='border')
+            #
+            #     output_noc_temp = output_noc_temp.cpu().numpy().transpose([0, 2, 3, 1]).reshape(output_noc.shape)
+            #
+            #     output_noc[point_dict['iuv'][:, 0] == (jdx + 1), :] = output_noc_temp[
+            #                                                           point_dict['iuv'][:, 0] == (jdx + 1), :]
+            #
+            # colors = np.ones_like(output_noc) * 255
+            #
+            # output_ply = np.concatenate((output_noc, colors), axis=1)
+            # with open('../3d_data/check_point.ply', 'w') as out_file:
+            #     out_file.write(ply_start.format(1))
+            #     np.savetxt(out_file, output_ply, fmt=' '.join(['%0.8f'] * 3 + ['%d'] * 3))
 
-            zero_im = zero_im + person_seg
-
-            zero_im = (zero_im > 0).astype('float32')
-            zero_im = cv2.dilate(zero_im, kernel, iterations=1)
-
-            cv2.imwrite(os.path.join(seg_key_path,  im['file_name']), (zero_im == 0.0).astype('uint8'))
-            if point_dict['yx'].shape[0] > 0:
-                if point_dict['yx'].min() == 0:
-                    print('Min 0!')
-                uniques, counts = np.unique(point_dict['yx'], axis=0, return_counts=True)
-                if counts.max() > 1:
-                    print("Lot of YXs!.")
-
-            # point_dict['noc'] = output_noc[point_dict['yx'][:, 0], point_dict['yx'][:, 1], :]
-            point_dict['noc'] = output_noc
             # if point_dict['noc'].shape[0] > 0:
             #     if point_dict['noc'].min() < smpl_norm_vertices.min() or point_dict['noc'].max() > smpl_norm_vertices.max():
             #         print("Error at idx {}.".format(idx))
@@ -312,9 +310,9 @@ end_header\n'''
 
             # progress_bar(idx + 1, len_ids, prefix="Progress for {}:".format(key), suffix="Complete")
 
-        save_file = os.path.join(save_annotation_file, '{}.pkl'.format(key))
-        with open(save_file, 'wb') as write_file:
-            pickle.dump(key_list, write_file, protocol=pickle.HIGHEST_PROTOCOL)
+        # save_file = os.path.join(save_annotation_file, '{}.pkl'.format(key))
+        # with open(save_file, 'wb') as write_file:
+        #     pickle.dump(key_list, write_file, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 
