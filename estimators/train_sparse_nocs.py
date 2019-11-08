@@ -45,7 +45,7 @@ def main(opt):
     train_loader = SparsePointLoader(train=True, parent_dir=coco_parent_dir)
     train_loader = DataLoader(train_loader, batch_size=opt.batch_size, shuffle=True, num_workers=2)
     test_loader = SparsePointLoader(train=False, parent_dir=coco_parent_dir)
-    test_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
+    test_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=1)
 
     data_loader = namedtuple('data_loader', ('train', 'validate'))
     data_loader = data_loader(train_loader, test_loader)
