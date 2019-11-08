@@ -189,7 +189,7 @@ class TrainNOCs:
         output = self.seg_net(batch['image'])
         # masked_output = output[1] * (batch['mask_image'] > 0).float()
         noc_loss = self.criterion_l1_sparse(output=output[1], batch=batch)
-        total_loss += noc_loss * 100
+        total_loss += noc_loss * 50
         # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
         foreground = (1 - batch['background'][:, 0:2, :, :]).float()
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
