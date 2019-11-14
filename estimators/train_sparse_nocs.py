@@ -56,7 +56,7 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_ResUNet_Dropout_2Head_fixed_points_1',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_ResUNet_Dropout_2Head_fixed_points_2',
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=100',
