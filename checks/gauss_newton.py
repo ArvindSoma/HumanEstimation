@@ -85,25 +85,29 @@ def main():
     loss = torch.nn.L1Loss(reduction='none')
 
     value = 50
-    while value > 1e-15:
+    count = 0
+    while value > 1e-9:
         estimate = transform(inputs=inputs, vector=point)
         residual = (estimate - transformed).view(-1)
 
         jac = jacobian(outputs=residual, inputs=inputs)
         # jac = jac.view(jac.shape[0] * jac.shape[1], jac.shape[2])
-
+        if torch.abs(torch.mean(residual)).item() > value:
+            print("Wrong!! ", torch.abs(torch.mean(residual)).item(), value, count)
+            break
         jac = jac.squeeze()
 
         delta = torch.mv(torch.inverse(torch.mm(jac.T, jac)), torch.mv(jac.T, (estimate - transformed).view(jac.shape[0])))
         inputs = inputs - delta
         # print(inputs)
-        if torch.abs(torch.mean(residual)).item() > value:
-            print("Wrong!! ", torch.mean(residual).item())
-            break
+
         value = torch.abs(torch.mean(residual)).item()
-    print(inputs)
-    print(transform(inputs=inputs, vector=point))
-    print(transformed)
+        count += 1
+    print("No. of iterations: {}".format(count))
+    print("Applied transformation:\n", transform(inputs=inputs, vector=point))
+    print("True transformation:\n", transformed)
+    print("Parameters:\n", inputs)
+
 
 if __name__ == "__main__":
     main()
