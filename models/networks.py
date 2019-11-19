@@ -524,14 +524,11 @@ class ResUnet2HeadGenerator(nn.Module):
     """Create a Unet-based generator"""
 
     def __init__(self, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
-                 use_dropout=True, dilation=1, combine_resnet=None, last_layer=nn.Tanh(),
-                 latent=ResNet18Features(final_layer=-2)):
+                 use_dropout=True, last_layer=nn.Tanh(), latent=ResNet18Features(final_layer=-2),
+                 index_list=[8, 7, 6, 4, 3, 2]):
         """Construct a Unet generator
         Parameters:
-            input_nc (int)  -- the number of channels in input images
             output_nc (int) -- the number of channels in output images
-            num_downs (int) -- the number of downsamplings in UNet. For example, # if |num_downs| == 7,
-                                image of size 128x128 will become of size 1x1 # at the bottleneck
             ngf (int)       -- the number of filters in the last conv layer
             norm_layer      -- normalization layer
         We construct the U-Net from the innermost layer to the outermost layer.
@@ -539,8 +536,6 @@ class ResUnet2HeadGenerator(nn.Module):
         """
         super(ResUnet2HeadGenerator, self).__init__()
         latent = nn.Sequential(*list(*latent.children()))
-
-        index_list = [8, 7, 6, 4, 3, 2]
 
         # down = []
         down = [latent[index: index_list[-(idx + 2)]] if idx > 0 else latent[:(index + 1)] for idx, index in
@@ -557,7 +552,7 @@ class ResUnet2HeadGenerator(nn.Module):
             param.requires_grad = False
         up = []
 
-        in_ch = 512
+        in_ch = ngf * 8
         out_ch = in_ch // 2
         skip = False
         for idx, val in enumerate(reversed(index_list[1:-1])):
@@ -570,7 +565,7 @@ class ResUnet2HeadGenerator(nn.Module):
                                  UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm_layer))]
 
             in_ch = out_ch
-            out_ch = in_ch // 2 if in_ch > 64 else 64
+            out_ch = in_ch // 2 if (in_ch // 2) > ngf else 64
         self.up_sample = nn.ModuleList(up)
 
         self.output_list = nn.ModuleList()

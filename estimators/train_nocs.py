@@ -57,11 +57,15 @@ class TrainNOCs:
                  betas=(0.5, 0.999), batch_size=8, checkpoint=None, model_type='res', output_heads='two'):
 
         latent = ResNet50Features(final_layer=-2)
+        ngf = 256
+        # index_list = [8, 7, 6, 5, 4, 3]
         if output_heads == 'one':
             self.forward = self.forward_sparse
-            self.seg_net = ResNetGenerator(latent=latent, out_channels=3, last_layer=nn.ReLU())
+            self.seg_net = ResNetGenerator(latent=latent, out_channels=3,
+                                           last_layer=nn.ReLU())
             if model_type == 'res_unet':
-                self.seg_net = ResUnetGenerator(latent=latent, output_nc=3, last_layer=nn.ReLU())
+                self.seg_net = ResUnetGenerator(latent=latent, output_nc=3,
+                                                last_layer=nn.ReLU(), ngf=ngf)
 
             # self.seg_net = UnetGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
             #                              use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
@@ -71,7 +75,8 @@ class TrainNOCs:
             self.forward = self.forward_2_heads
             self.seg_net = ResNet2HeadGenerator(latent=latent, out_channels=3, last_layer=nn.ReLU())
             if model_type == 'res_unet':
-                self.seg_net = ResUnet2HeadGenerator(latent=latent, output_nc=3, last_layer=nn.ReLU())
+                self.seg_net = ResUnet2HeadGenerator(latent=latent, output_nc=3,
+                                                     last_layer=nn.ReLU(), ngf=ngf)
             # self.seg_net = Unet2HeadGenerator(input_nc=3, output_nc=3, num_downs=num_downs,
             #                                   use_dropout=False, norm_layer=torch.nn.BatchNorm2d,
             #                                   last_layer=nn.ReLU())
