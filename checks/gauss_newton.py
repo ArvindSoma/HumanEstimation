@@ -86,7 +86,7 @@ def main():
 
     value = 50
     count = 0
-    while value > 1e-9:
+    while count < 50:
         estimate = transform(inputs=inputs, vector=point)
         residual = (estimate - transformed).view(-1)
 
@@ -97,7 +97,8 @@ def main():
             break
         jac = jac.squeeze()
 
-        delta = torch.mv(torch.inverse(torch.mm(jac.T, jac)), torch.mv(jac.T, (estimate - transformed).view(jac.shape[0])))
+        delta = torch.mv(torch.inverse(torch.mm(jac.T, jac) + 1e-3 * torch.diag(torch.diag(torch.mm(jac.T, jac)))),
+                         torch.mv(jac.T, (estimate - transformed).view(jac.shape[0])))
         inputs = inputs - delta
         # print(inputs)
 
@@ -107,6 +108,8 @@ def main():
     print("Applied transformation:\n", transform(inputs=inputs, vector=point))
     print("True transformation:\n", transformed)
     print("Parameters:\n", inputs)
+
+    print(torch.sum(torch.abs(transform(inputs=inputs, vector=point) - transformed)))
 
 
 if __name__ == "__main__":
