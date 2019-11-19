@@ -146,3 +146,17 @@ class ResNet18Features(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+
+class ResNet50Features(nn.Module):
+
+    def __init__(self, final_layer=-3):
+        super(ResNet50Features, self).__init__()
+        model = torchvision.models.resnet50(pretrained=True)
+        for param in model.parameters():
+            param.requires_grad = False
+        model = nn.Sequential(*model.children())
+        self.model = model[:final_layer]
+
+    def forward(self, x):
+        return self.model(x)
