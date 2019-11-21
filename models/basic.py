@@ -139,8 +139,8 @@ class ResNet18Features(nn.Module):
     def __init__(self, final_layer=-3):
         super(ResNet18Features, self).__init__()
         model = torchvision.models.resnet18(pretrained=True)
-        for param in model.parameters():
-            param.requires_grad = False
+        # for param in model.parameters():
+        #     param.requires_grad = False
         model = nn.Sequential(*model.children())
         self.model = model[:final_layer]
 
@@ -153,8 +153,8 @@ class ResNet50Features(nn.Module):
     def __init__(self, final_layer=-3):
         super(ResNet50Features, self).__init__()
         model = torchvision.models.resnet50(pretrained=True)
-        for param in model.parameters():
-            param.requires_grad = False
+        # for param in model.parameters():
+        #     param.requires_grad = False
         model = nn.Sequential(*model.children())
         self.model = model[:final_layer]
 

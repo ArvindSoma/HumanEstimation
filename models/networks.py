@@ -548,8 +548,8 @@ class ResUnet2HeadGenerator(nn.Module):
 
         self.down_sample = nn.ModuleList(down)
 
-        for param in self.down_sample.parameters():
-            param.requires_grad = False
+        # for param in self.down_sample.parameters():
+        #     param.requires_grad = False
         up = []
 
         in_ch = ngf * 8
@@ -579,7 +579,6 @@ class ResUnet2HeadGenerator(nn.Module):
                                  UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=None)),
                    nn.LeakyReLU(0.2),
                    MultiDilation(dim_out=out_ch, norm_layer=None),
-                   last_layer
                    ]
             if idx == 1:
                 seq += [last_layer]
