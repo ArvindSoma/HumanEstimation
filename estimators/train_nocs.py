@@ -53,11 +53,15 @@ class UnNormalize(object):
 
 
 class TrainNOCs:
-    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), num_downs=5, lr=2e-4,
-                 betas=(0.5, 0.999), batch_size=8, checkpoint=None, model_type='res', output_heads='two'):
-
-        latent = ResNet50Features(final_layer=-2)
-        ngf = 256
+    def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), lr=2e-4,
+                 betas=(0.5, 0.999), batch_size=8, checkpoint=None, model_type='res', output_heads='two',
+                 backbone='res18'):
+        if backbone == 'res50':
+            latent = ResNet50Features(final_layer=-2)
+            ngf = 256
+        else:
+            latent = ResNet18Features(final_layer=-2)
+            ngf = 64,
         # index_list = [8, 7, 6, 5, 4, 3]
         if output_heads == 'one':
             self.forward = self.forward_sparse

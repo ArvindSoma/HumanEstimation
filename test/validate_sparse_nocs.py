@@ -26,6 +26,7 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--checkpoint', type=str, default='../saves/', help='checkpoint file')
+    parser.add_argument('--backbone', type=str, default='res18', help='backbone type')
     parser.add_argument('--model_type', type=str, default='res', help='model type')
     parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     return parser.parse_args(args)
@@ -51,11 +52,12 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_test_ResUNet_Dropout_2Head_fixed_points_1',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_test_Res50UNet_Dropout_2Head_fixed_points_1',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_sampled_train_ResUNet_Dropout_2Head_fixed_points_1/save_330499.pth',
+                      '--checkpoint=../saves/sparse_sampled_train_Res50UNet_Dropout_2Head_fixed_points_1/save_330499.pth',
                       '--num_heads=two',
-                      '--model_type=res_unet'] + sys.argv[1:])
+                      '--model_type=res_unet',
+                      '--backbone=res18'] + sys.argv[1:])
     main(opt=opt)
 
