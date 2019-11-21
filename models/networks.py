@@ -582,7 +582,7 @@ class ResUnet2HeadGenerator(nn.Module):
 
             seq = [nn.Sequential(nn.LeakyReLU(0.2),
                                  UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip,
-                                             norm=None, dropout=use_dropout)),
+                                             norm=None, dropout=False)),
                    nn.Dropout2d(p=prob),
                    nn.LeakyReLU(0.2),
                    MultiDilation(dim_out=out_ch, norm_layer=None, use_dropout=use_dropout),

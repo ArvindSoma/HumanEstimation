@@ -166,7 +166,7 @@ end_header\n'''
     for im_id in tqdm(im_ids):
         im = coco.loadImgs(im_id)[0]
         file = im['file_name']
-        with open(os.path.join(file), 'rb') as ifile:
+        with open(os.path.join(opt.input, os.path.splitext(file)[0] + '.pkl'), 'rb') as ifile:
             data = pickle.load(ifile)
         iuv_image = data['iuv']
 
@@ -201,7 +201,7 @@ end_header\n'''
             # cv2.destroyAllWindows()
 
         noc_dict = {'noc': output_noc, 'iuv': data['iuv'], 'inds': data['inds']}
-        with open(os.path.join(opt.output, os.path.basename(file)), 'wb') as out_file:
+        with open(os.path.join(opt.output, os.path.basename(os.path.splitext(file)[0] + '.pkl')), 'wb') as out_file:
             pickle.dump(noc_dict, out_file)
 
 
@@ -226,7 +226,7 @@ def parse_args(args):
 
 
 if __name__ == '__main__':
-    opt = parse_args(['--input=/home/arvindsoma/Documents/Datasets/COCO_2014/minival2014',
+    opt = parse_args(['--input=/home/arvindsoma/Documents/Datasets/COCO_2014/densepose_noc/minival2014',
                       '--output=/home/arvindsoma/Documents/Datasets/COCO_2014/densepose_noc/val2014',
                       '--image_width=340',
                       '--image_height=340'])
