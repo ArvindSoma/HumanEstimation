@@ -61,7 +61,7 @@ class TrainNOCs:
             ngf = 256
         else:
             latent = ResNet18Features(final_layer=-2)
-            ngf = 64,
+            ngf = 64
         # index_list = [8, 7, 6, 5, 4, 3]
         if output_heads == 'one':
             self.forward = self.forward_sparse
