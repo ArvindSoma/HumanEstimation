@@ -585,7 +585,7 @@ class ResUnet2HeadGenerator(nn.Module):
                                              norm=None, dropout=use_dropout)),
                    nn.Dropout2d(p=prob),
                    nn.LeakyReLU(0.2),
-                   MultiDilation(dim_out=out_ch, norm_layer=None),
+                   MultiDilation(dim_out=out_ch, norm_layer=None, use_dropout=use_dropout),
                    ]
             if idx == 1:
                 seq += [last_layer]
