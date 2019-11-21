@@ -569,6 +569,11 @@ class ResUnet2HeadGenerator(nn.Module):
         self.up_sample = nn.ModuleList(up)
 
         self.output_list = nn.ModuleList()
+
+        if use_dropout:
+            prob = 0.2
+        else:
+            prob = 0
         for idx in range(2):
             if idx is 0:
                 out_ch = 2
@@ -576,7 +581,9 @@ class ResUnet2HeadGenerator(nn.Module):
                 out_ch = output_nc
 
             seq = [nn.Sequential(nn.LeakyReLU(0.2),
-                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=None)),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip,
+                                             norm=None, dropout=use_dropout)),
+                   nn.Dropout2d(p=prob),
                    nn.LeakyReLU(0.2),
                    MultiDilation(dim_out=out_ch, norm_layer=None),
                    ]

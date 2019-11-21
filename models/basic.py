@@ -68,14 +68,19 @@ class UpConvLayer(nn.Module):
 
 
 class MultiDilation(nn.Module):
-    def __init__(self, dim_out, norm_layer=nn.BatchNorm2d, dilation=2):
+    def __init__(self, dim_out, norm_layer=nn.BatchNorm2d, dilation=2, use_dropout=False):
         super(MultiDilation, self).__init__()
 
         # self.modules = nn.ModuleList()
         dil = dilation
+        if use_dropout:
+            prob = 0.2
+        else:
+            prob = 0
         # for dil in range(1, dilation + 1):
         self.seq = nn.Sequential(
             ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, norm=norm_layer),
+            nn.Dropout2d(p=prob),
             nn.LeakyReLU(0.2),
             ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, norm=norm_layer),
         )
