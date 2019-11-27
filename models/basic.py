@@ -47,7 +47,7 @@ class UpConvLayer(nn.Module):
 
         self.leaky_relu = nn.LeakyReLU(0.2)
 
-        self.sequence2 = MultiDilation(dim_out=out_ch)
+        self.sequence2 = MultiDilation(dim_out=out_ch, use_dropout=dropout)
         self.dropout = dropout
 
     def forward(self, x, skip_net=None):
@@ -80,9 +80,10 @@ class MultiDilation(nn.Module):
         # for dil in range(1, dilation + 1):
         self.seq = nn.Sequential(
             ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, norm=norm_layer),
-            nn.Dropout2d(p=prob),
+            nn.Dropout(p=prob),
             nn.LeakyReLU(0.2),
             ConvLayer(dim_out, dim_out, dilation=dil, filter=3, pad=dil, norm=norm_layer),
+            nn.Dropout(p=prob),
         )
             # self.modules.append(seq)
 

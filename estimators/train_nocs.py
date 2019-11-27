@@ -55,7 +55,7 @@ class UnNormalize(object):
 class TrainNOCs:
     def __init__(self, save_dir='Trial', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), lr=2e-4,
                  betas=(0.5, 0.999), batch_size=8, checkpoint=None, model_type='res', output_heads='two',
-                 backbone='res18'):
+                 backbone='res18', use_dropout=True):
         if backbone == 'res50':
             latent = ResNet50Features(final_layer=-2)
             ngf = 256
@@ -249,7 +249,7 @@ class TrainNOCs:
         output = self.seg_net(batch['image'])
         # masked_output = output[1] * (batch['mask_image'] > 0).float()
         noc_loss = self.criterion_noc(output=output[1], batch=batch)
-        total_loss += noc_loss * 100
+        total_loss += noc_loss * 75
         # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
         foreground = (1 - batch['background'][:, 0:2, :, :]).float()
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
@@ -338,6 +338,7 @@ class TrainNOCs:
 
     def validate(self, test_loader, niter, test_writer, write_ply=False, ply_dir=''):
         total_losses = self.loss_tuple(0, 0, 0, 0)
+        mse_metric = 0
         if write_ply:
             if not os.path.exists(ply_dir):
                 os.mkdir(ply_dir)
@@ -359,12 +360,14 @@ class TrainNOCs:
                 for jdx, val in enumerate(losses):
                     if jdx is 3:
                         total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
+                        mse_metric += losses[jdx]
                     else:
                         total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
 
                 if idx == (len(test_loader) - 1):
                     # print(len(test_loader))
+                    mse_metric /= len(test_loader)
                     for jdx, val in enumerate(total_losses):
 
                         total_losses[jdx] /= len(test_loader)
@@ -374,6 +377,7 @@ class TrainNOCs:
                     # batch['image'] = self.un_norm(batch['image'])
 
                     test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
+                    test_writer.add_scalar('MSE', mse_metric, niter)
                     batch['image'] = batch['image'] * 2 - 1
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
                               name="Validation", niter=niter, foreground=self.foreground)
@@ -393,6 +397,8 @@ class TrainNOCs:
     def run(self, opt, data_loader, writer, epoch=0):
 
         total_losses = self.loss_tuple(0, 0, 0, 0)
+        mse_metric = 0
+
         data_length = len(data_loader.train)
 
         self.seg_net.train()
@@ -411,6 +417,7 @@ class TrainNOCs:
             for jdx, val in enumerate(losses):
                 if jdx is 3:
                     total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
+                    mse_metric += losses[jdx].item()
                 else:
                     total_losses[jdx] += losses[jdx].item()
             # total_loss += loss.item()
@@ -427,6 +434,7 @@ class TrainNOCs:
                 #           name="Train", niter=niter)
             # Last Iteration
             if idx == (data_length - 1):
+                mse_metric /= data_length
                 for jdx, val in enumerate(total_losses):
                     total_losses[jdx] /= data_length
                 print("Epoch: {}  |  Final Iteration: {}  |  Train Loss: {}".format(epoch, niter,
@@ -434,6 +442,7 @@ class TrainNOCs:
 
                 batch['image'] = batch['image'] * 2 - 1
                 writer.train.add_scalar('PSNR', total_losses.NOC_mse, niter)
+                writer.train.add_scalar('MSE', mse_metric, niter)
                 torch.save({'epoch': epoch,
                             'model': self.seg_net.state_dict(),
                             'optimizer': self.optimizer.state_dict()},

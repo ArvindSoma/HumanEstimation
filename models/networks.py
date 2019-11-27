@@ -561,8 +561,15 @@ class ResUnet2HeadGenerator(nn.Module):
             else:
                 skip = True
 
+            if use_dropout and idx < 2:
+                dropout = True
+
+            else:
+                dropout = False
+
             up += [nn.Sequential(nn.LeakyReLU(0.2),
-                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm_layer))]
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm_layer,
+                                             dropout=dropout))]
 
             in_ch = out_ch
             out_ch = in_ch // 2 if (in_ch // 2) > ngf else 64
@@ -583,9 +590,8 @@ class ResUnet2HeadGenerator(nn.Module):
             seq = [nn.Sequential(nn.LeakyReLU(0.2),
                                  UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip,
                                              norm=None, dropout=False)),
-                   nn.Dropout2d(p=prob),
                    nn.LeakyReLU(0.2),
-                   MultiDilation(dim_out=out_ch, norm_layer=None, use_dropout=use_dropout),
+                   MultiDilation(dim_out=out_ch, norm_layer=None, use_dropout=False),
                    ]
             if idx == 1:
                 seq += [last_layer]
