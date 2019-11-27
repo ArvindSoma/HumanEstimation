@@ -16,6 +16,28 @@ def match_faces(array, faces):
     return array
 
 
+def normalize(vector):
+    return vector / np.linalg.norm(vector)
+
+
+def look_at(cam_pos_world, to_pos_world, up = np.array([0, 1, 0])):
+
+    forward = normalize( cam_pos_world - to_pos_world) # pos if on unit sphere and model is centered
+
+    right = normalize(np.cross(normalize(up), forward))
+    up = normalize(np.cross(forward, right))
+
+    camToWorld = np.zeros((4,4))
+
+    camToWorld[0,:-1] = right
+    camToWorld[1,:-1] = up
+    camToWorld[2,:-1] = forward
+
+    camToWorld[3,:-1] = cam_pos_world
+    camToWorld[3,3] = 1
+    return camToWorld.T
+
+
 class Render:
     def __init__(self, width, height, camera_distance=0.05, pose_y=0.0, focal_length=None):
 
