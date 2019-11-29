@@ -144,7 +144,7 @@ class TrainNOCs:
 
     def criterion_distance(self, output, batch):
         batch_size = batch['num_points'].shape[0]
-        im_size = batch['image'].shape[-1] - 1
+        im_size = batch['image'].shape[-1]
         batch['num_points'] = batch['num_points'].long()
         num = batch['num_points'].view(batch_size, 1)
         # batch['yx_loc'] = batch['yx_loc'].view((1, 1, ) + batch['yx_loc'].shape)
