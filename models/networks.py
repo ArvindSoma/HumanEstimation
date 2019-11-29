@@ -561,7 +561,7 @@ class ResUnet2HeadGenerator(nn.Module):
             else:
                 skip = True
 
-            if use_dropout and idx < 2:
+            if use_dropout and idx < 3:
                 dropout = True
 
             else:
