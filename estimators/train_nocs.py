@@ -286,7 +286,8 @@ class TrainNOCs:
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
         background_loss = self.bce(input=output[0], target=foreground)
         total_loss += background_loss
-        distance = self.criterion_distance(output=output[1], batch=batch)
+        with torch.no_grad():
+            distance = self.criterion_distance(output=output[1], batch=batch)
         mse = self.criterion_mse(output=output[1], batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
                                  background_loss=background_loss, NOC_mse=mse,
