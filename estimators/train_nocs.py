@@ -98,12 +98,14 @@ class TrainNOCs:
         self.sparse_l1 = torch.nn.SmoothL1Loss(reduction='none')
         self.l1 = torch.nn.SmoothL1Loss()
         self.l2 = torch.nn.MSELoss()
+        self.distance = torch.nn.PairwiseDistance(p=2)
         self.bce = torch.nn.BCEWithLogitsLoss()
         self.seg_net.cuda()
 
         self.sparse_l1.cuda()
         self.l1.cuda()
         self.bce.cuda()
+        self.distance.cuda()
         self.seg_net.train()
 
         self.criterion_noc = self.criterion_l1_sparse_bilinear
@@ -124,7 +126,8 @@ class TrainNOCs:
         self.mean = mean
         self.std = std
 
-        self.loss_tuple = recordclass('losses', ('total_loss', 'NOC_loss', 'background_loss', 'NOC_mse'))
+        self.loss_tuple = recordclass('losses',
+                                      ('total_loss', 'NOC_loss', 'background_loss', 'NOC_mse', 'NOC_distance'))
 
         self.ply_start = '''ply
         format ascii 1.0
@@ -138,6 +141,33 @@ class TrainNOCs:
         end_header\n'''
 
         self.un_norm = UnNormalize(mean=self.mean, std=self.std)
+
+    def criterion_distance(self, output, batch):
+        batch_size = batch['num_points'].shape[0]
+        im_size = batch['image'].shape[-1] - 1
+        batch['num_points'] = batch['num_points'].long()
+        num = batch['num_points'].view(batch_size, 1)
+        # batch['yx_loc'] = batch['yx_loc'].view((1, 1, ) + batch['yx_loc'].shape)
+        xy_loc = torch.flip(batch['yx_loc'], dims=(-1,)).float()
+        xy_loc /= 255
+        xy_loc = (xy_loc * 2) - 1
+        sub = 0
+        for idx in range(batch_size):
+            if num[idx, 0] == 0:
+                # batch_size -= 1
+                continue
+            selected_xy = xy_loc[idx, :num[idx, 0], :]
+            selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
+            selected_noc = batch['noc_points'][idx, :num[idx, 0], :]
+            # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
+            # selected_noc = selected_noc.view((1,) + selected_noc.shape)
+            sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,
+                                           mode='bilinear', padding_mode='border')
+            sampled_indices = sampled_indices.view(3, num[idx, 0])
+            sampled_indices = torch.transpose(sampled_indices, 0, 1)
+            sub += self.distance(sampled_indices, selected_noc)
+
+        return sub / batch_size
 
     def criterion_mse(self, output, batch):
         # batch_size = batch['num_points'].shape[0]
@@ -240,8 +270,9 @@ class TrainNOCs:
         background_loss = self.l1(output * batch['background'], background_target)
         total_loss += background_loss
         mse = self.criterion_mse(output=output, batch=batch)
+        distance = self.criterion_mse(output=output, batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
-                                 background_loss=background_loss, NOC_mse=mse)
+                                 background_loss=background_loss, NOC_mse=mse, NOC_distance=distance)
         return output, losses
 
     def forward_2_heads(self, batch):
@@ -249,15 +280,17 @@ class TrainNOCs:
         output = self.seg_net(batch['image'])
         # masked_output = output[1] * (batch['mask_image'] > 0).float()
         noc_loss = self.criterion_noc(output=output[1], batch=batch)
-        total_loss += noc_loss * 75
+        total_loss += noc_loss * 100
         # print(torch.max(((1 - batch['background'][:, 0:1, :, :]) > 0).float()))
         foreground = (1 - batch['background'][:, 0:2, :, :]).float()
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
         background_loss = self.bce(input=output[0], target=foreground)
         total_loss += background_loss
         mse = self.criterion_mse(output=output[1], batch=batch)
+        distance = self.criterion_mse(output=output, batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
-                                 background_loss=background_loss, NOC_mse=mse)
+                                 background_loss=background_loss, NOC_mse=mse,
+                                 NOC_distance=distance)
         return output, losses
 
     def train(self, batch):
@@ -337,8 +370,8 @@ class TrainNOCs:
                 np.savetxt(write_file, concatenated_gt, fmt=' '.join(['%0.12f'] * 3 + ['%d'] * 3))
 
     def validate(self, test_loader, niter, test_writer, write_ply=False, ply_dir=''):
-        total_losses = self.loss_tuple(0, 0, 0, 0)
-        mse_metric = 0
+        total_losses = self.loss_tuple(0, 0, 0, 0, 0)
+        # mse_metric = 0
         if write_ply:
             if not os.path.exists(ply_dir):
                 os.mkdir(ply_dir)
@@ -360,14 +393,14 @@ class TrainNOCs:
                 for jdx, val in enumerate(losses):
                     if jdx is 3:
                         total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
-                        mse_metric += losses[jdx]
+                        # mse_metric += losses[jdx]
                     else:
                         total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
 
                 if idx == (len(test_loader) - 1):
                     # print(len(test_loader))
-                    mse_metric /= len(test_loader)
+                    # mse_metric /= len(test_loader)
                     for jdx, val in enumerate(total_losses):
 
                         total_losses[jdx] /= len(test_loader)
@@ -377,7 +410,7 @@ class TrainNOCs:
                     # batch['image'] = self.un_norm(batch['image'])
 
                     test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
-                    test_writer.add_scalar('MSE', mse_metric, niter)
+                    test_writer.add_scalar('Distance', total_losses.NOC_distance, niter)
                     batch['image'] = batch['image'] * 2 - 1
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
                               name="Validation", niter=niter, foreground=self.foreground)
@@ -396,8 +429,8 @@ class TrainNOCs:
 
     def run(self, opt, data_loader, writer, epoch=0):
 
-        total_losses = self.loss_tuple(0, 0, 0, 0)
-        mse_metric = 0
+        total_losses = self.loss_tuple(0, 0, 0, 0, 0)
+        # mse_metric = 0
 
         data_length = len(data_loader.train)
 
@@ -417,7 +450,6 @@ class TrainNOCs:
             for jdx, val in enumerate(losses):
                 if jdx is 3:
                     total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
-                    mse_metric += losses[jdx].item()
                 else:
                     total_losses[jdx] += losses[jdx].item()
             # total_loss += loss.item()
@@ -434,7 +466,7 @@ class TrainNOCs:
                 #           name="Train", niter=niter)
             # Last Iteration
             if idx == (data_length - 1):
-                mse_metric /= data_length
+                # mse_metric /= data_length
                 for jdx, val in enumerate(total_losses):
                     total_losses[jdx] /= data_length
                 print("Epoch: {}  |  Final Iteration: {}  |  Train Loss: {}".format(epoch, niter,
@@ -442,7 +474,7 @@ class TrainNOCs:
 
                 batch['image'] = batch['image'] * 2 - 1
                 writer.train.add_scalar('PSNR', total_losses.NOC_mse, niter)
-                writer.train.add_scalar('MSE', mse_metric, niter)
+                writer.train.add_scalar('Distance', total_losses.NOC_distance, niter)
                 torch.save({'epoch': epoch,
                             'model': self.seg_net.state_dict(),
                             'optimizer': self.optimizer.state_dict()},

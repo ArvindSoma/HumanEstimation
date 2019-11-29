@@ -46,10 +46,10 @@ def main(opt):
     camera_locations = np.array([[0.5, 0.5, 10.5],
                                  [10.0, 0.5, 4.5],
                                  [-10.0, 0.5, 4.5],
-                                 [0.5, 0.5, -10.5],
+                                 # [0.5, 0.5, -10.5],
                                  [10, 10, 10]])
 
-    for idx in range(file_size):
+    for idx in range(86, file_size):
         file_list = ["../3d_data/smpl_NOC_vertices.ply", "Ground_truth_{}.ply".format(idx), "Output_{}.ply".format(idx)]
         camera_list = []
         for jdx, file in enumerate(file_list):
@@ -75,7 +75,9 @@ def main(opt):
                 else:
                     for kdx, pose in enumerate(pts):
                         spr_tri = trimesh.creation.uv_sphere(radius=0.01)
-                        spr_tri.visual.vertex_colors = colors[kdx, :]
+                        spr_tri.visual.vertex_colors = (colors[kdx, [2, 1, 0]] * 255).astype('uint8')
+                        spr_tri.visual.vertex_colors[:, 3] = 255
+                        # spr_tri.visual.vertex_colors = np.array([255, 0, 0])
                         # print(colors[kdx] / 255)
                         poses = np.eye(4)
                         poses[:3, 3] = pose
@@ -83,7 +85,8 @@ def main(opt):
                         scene.add(spr_py, pose=poses)
 
                 render = pyrender.OffscreenRenderer(340, 340)
-                rendered, _ = render.render(scene=scene, flags=pyrender.RenderFlags.RGBA)
+                rendered, _ = render.render(scene=scene, flags=pyrender.RenderFlags.NONE)
+                scene.clear()
                 rendered = np.pad(array=rendered, pad_width=((5, 5), (5, 5), (0, 0)), mode='constant')
                 render_list.append(rendered)
 
