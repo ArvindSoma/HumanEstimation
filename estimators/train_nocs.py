@@ -371,7 +371,7 @@ class TrainNOCs:
 
     def validate(self, test_loader, niter, test_writer, write_ply=False, ply_dir=''):
         total_losses = self.loss_tuple(0, 0, 0, 0, 0)
-        # mse_metric = 0
+        mse_metric = 0
         if write_ply:
             if not os.path.exists(ply_dir):
                 os.mkdir(ply_dir)
@@ -393,14 +393,14 @@ class TrainNOCs:
                 for jdx, val in enumerate(losses):
                     if jdx is 3:
                         total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
-                        # mse_metric += losses[jdx]
+                        mse_metric += losses[jdx]
                     else:
                         total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
 
                 if idx == (len(test_loader) - 1):
                     # print(len(test_loader))
-                    # mse_metric /= len(test_loader)
+                    mse_metric /= len(test_loader)
                     for jdx, val in enumerate(total_losses):
 
                         total_losses[jdx] /= len(test_loader)
@@ -410,6 +410,7 @@ class TrainNOCs:
                     # batch['image'] = self.un_norm(batch['image'])
 
                     test_writer.add_scalar('PSNR', total_losses.NOC_mse, niter)
+                    test_writer.add_scalar('MSE', mse_metric, niter)
                     test_writer.add_scalar('Distance', total_losses.NOC_distance, niter)
                     batch['image'] = batch['image'] * 2 - 1
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
@@ -430,7 +431,7 @@ class TrainNOCs:
     def run(self, opt, data_loader, writer, epoch=0):
 
         total_losses = self.loss_tuple(0, 0, 0, 0, 0)
-        # mse_metric = 0
+        mse_metric = 0
 
         data_length = len(data_loader.train)
 
@@ -450,6 +451,7 @@ class TrainNOCs:
             for jdx, val in enumerate(losses):
                 if jdx is 3:
                     total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
+                    mse_metric += losses[jdx]
                 else:
                     total_losses[jdx] += losses[jdx].item()
             # total_loss += loss.item()
@@ -466,7 +468,7 @@ class TrainNOCs:
                 #           name="Train", niter=niter)
             # Last Iteration
             if idx == (data_length - 1):
-                # mse_metric /= data_length
+                mse_metric /= data_length
                 for jdx, val in enumerate(total_losses):
                     total_losses[jdx] /= data_length
                 print("Epoch: {}  |  Final Iteration: {}  |  Train Loss: {}".format(epoch, niter,
@@ -474,6 +476,7 @@ class TrainNOCs:
 
                 batch['image'] = batch['image'] * 2 - 1
                 writer.train.add_scalar('PSNR', total_losses.NOC_mse, niter)
+                test_writer.add_scalar('MSE', mse_metric, niter)
                 writer.train.add_scalar('Distance', total_losses.NOC_distance, niter)
                 torch.save({'epoch': epoch,
                             'model': self.seg_net.state_dict(),
