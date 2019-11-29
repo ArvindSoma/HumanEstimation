@@ -270,7 +270,7 @@ class TrainNOCs:
         background_loss = self.l1(output * batch['background'], background_target)
         total_loss += background_loss
         mse = self.criterion_mse(output=output, batch=batch)
-        distance = self.criterion_mse(output=output, batch=batch)
+        distance = self.criterion_distance(output=output, batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
                                  background_loss=background_loss, NOC_mse=mse, NOC_distance=distance)
         return output, losses
@@ -287,7 +287,7 @@ class TrainNOCs:
         background_loss = self.bce(input=output[0], target=foreground)
         total_loss += background_loss
         mse = self.criterion_mse(output=output[1], batch=batch)
-        distance = self.criterion_mse(output=output, batch=batch)
+        distance = self.criterion_distance(output=output[1], batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
                                  background_loss=background_loss, NOC_mse=mse,
                                  NOC_distance=distance)
