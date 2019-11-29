@@ -286,8 +286,8 @@ class TrainNOCs:
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
         background_loss = self.bce(input=output[0], target=foreground)
         total_loss += background_loss
-        with torch.no_grad():
-            distance = self.criterion_distance(output=output[1], batch=batch)
+        # with torch.no_grad():
+        distance = self.criterion_distance(output=output[1], batch=batch)
         mse = self.criterion_mse(output=output[1], batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
                                  background_loss=background_loss, NOC_mse=mse,
@@ -394,7 +394,7 @@ class TrainNOCs:
                 for jdx, val in enumerate(losses):
                     if jdx is 3:
                         total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
-                        mse_metric += losses[jdx]
+                        mse_metric += losses[jdx].item()
                     else:
                         total_losses[jdx] += losses[jdx].item()
                 # total_losses.total_loss += losses.total_loss.item()
@@ -452,7 +452,7 @@ class TrainNOCs:
             for jdx, val in enumerate(losses):
                 if jdx is 3:
                     total_losses[jdx] += 10 * log10(1 / losses[jdx].item())
-                    mse_metric += losses[jdx]
+                    mse_metric += losses[jdx].item()
                 else:
                     total_losses[jdx] += losses[jdx].item()
             # total_loss += loss.item()
