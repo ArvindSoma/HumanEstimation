@@ -476,7 +476,7 @@ class TrainNOCs:
 
                 batch['image'] = batch['image'] * 2 - 1
                 writer.train.add_scalar('PSNR', total_losses.NOC_mse, niter)
-                test_writer.add_scalar('MSE', mse_metric, niter)
+                writer.train.add_scalar('MSE', mse_metric, niter)
                 writer.train.add_scalar('Distance', total_losses.NOC_distance, niter)
                 torch.save({'epoch': epoch,
                             'model': self.seg_net.state_dict(),
