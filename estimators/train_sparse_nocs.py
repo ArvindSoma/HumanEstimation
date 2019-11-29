@@ -57,7 +57,7 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_Res18UNet_Decoder_Dropout_2Head_Coeff_75',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_Res18UNet_Decoder_Dropout_2Head_Coeff_100',
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=150',

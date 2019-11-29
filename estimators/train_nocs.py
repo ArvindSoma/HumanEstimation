@@ -165,7 +165,7 @@ class TrainNOCs:
                                            mode='bilinear', padding_mode='border')
             sampled_indices = sampled_indices.view(3, num[idx, 0])
             sampled_indices = torch.transpose(sampled_indices, 0, 1)
-            sub += self.distance(sampled_indices, selected_noc)
+            sub += torch.mean(self.distance(sampled_indices, selected_noc))
 
         return sub / batch_size
 
@@ -286,8 +286,8 @@ class TrainNOCs:
         foreground[:, 0, :, :] = batch['background'][:, 0, :, :]
         background_loss = self.bce(input=output[0], target=foreground)
         total_loss += background_loss
-        mse = self.criterion_mse(output=output[1], batch=batch)
         distance = self.criterion_distance(output=output[1], batch=batch)
+        mse = self.criterion_mse(output=output[1], batch=batch)
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
                                  background_loss=background_loss, NOC_mse=mse,
                                  NOC_distance=distance)
