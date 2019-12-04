@@ -26,7 +26,9 @@ def parse_args(args):
     parser.add_argument('--log_iter', type=int, default=100, help='logging iteration')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
+    parser.add_argument('--point_select', type=float, default=0.8, help='number of epochs')
     parser.add_argument('--backbone', type=str, default='res18', help='backbone type')
+
     parser.add_argument('--model_type', type=str, default='res', help='model type')
     parser.add_argument('--num_heads', type=str, default='one', help='number of output heads')
     return parser.parse_args(args)
@@ -43,7 +45,7 @@ def main(opt):
     main_writer = main_writer(SummaryWriter(os.path.join(opt.log_dir, 'train')),
                               SummaryWriter(os.path.join(opt.log_dir, 'test')))
 
-    train_loader = SparsePointLoader(train=True, parent_dir=coco_parent_dir)
+    train_loader = SparsePointLoader(train=True, parent_dir=coco_parent_dir, point_select=opt.point_select)
     train_loader = DataLoader(train_loader, batch_size=opt.batch_size, shuffle=True, num_workers=3)
     test_loader = SparsePointLoader(train=False, parent_dir=coco_parent_dir)
     test_loader = DataLoader(test_loader, batch_size=opt.batch_size, num_workers=2)
@@ -57,12 +59,13 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_Res18UNet_Decoder_Dropout_2Head_Coeff_100',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_Res18UNet_Decoder_Dropout_2Head_Coeff_100_select_0.8',
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=150',
                       '--num_heads=two',
                       '--model_type=res_unet',
-                      '--backbone=res18'] + sys.argv[1:])
+                      '--backbone=res18',
+                      '--point_select=0.8'] + sys.argv[1:])
     main(opt=opt)
 

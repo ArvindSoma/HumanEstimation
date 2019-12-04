@@ -92,11 +92,11 @@ class SparsePointLoader(Dataset):
         # print(background[:, :, 0] == )
 
 
-        # np.random.seed(int(time.time()))
-        # selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
-        #
-        # yx_loc = yx_loc[selection, :]
-        # noc_points = noc_points[selection, :]
+        np.random.seed(int(time.time()))
+        selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
+
+        yx_loc = yx_loc[selection, :]
+        noc_points = noc_points[selection, :]
 
         data_dict['image'], background, (h_, w_), (c_h, c_w) = self.fixed_rescale_crop(image=image,
                                                                                        background=background)
