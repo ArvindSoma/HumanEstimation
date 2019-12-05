@@ -92,6 +92,7 @@ class SparsePointLoader(Dataset):
         # print(background[:, :, 0] == )
 
         if self.point_select < 1:
+            print("Selecting point selection!")
             np.random.seed(int(time.time()))
             selection = np.random.choice(point_len, round(point_len * self.point_select), replace=False)
 
