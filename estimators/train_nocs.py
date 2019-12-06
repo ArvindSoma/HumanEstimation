@@ -300,7 +300,7 @@ class TrainNOCs:
             if num[idx, 0] == 0:
                 # batch_size -= 1
                 continue
-            selected_xy = xy_loc[idx, :num[idx, 0], 0]
+            selected_xy = xy_loc[idx, :num[idx, 0], :]
             selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
             selected_classes = batch['patch_points'][idx, :num[idx, 0]]
             # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
