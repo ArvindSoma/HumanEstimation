@@ -467,7 +467,8 @@ class TrainNOCs:
                     self.write_noc_ply(output=output, batch=batch, idx=idx, ply_dir=ply_dir)
                     batch['image'] = batch['image'] * 2 - 1
                     visualize(writer=test_writer, batch=batch, output=(output, total_losses),
-                              name="Validation", niter=idx, foreground=self.foreground, viz_loss=False)
+                              name="Validation", niter=idx, foreground=self.foreground, viz_loss=False,
+                              part_segmentation=self.part_segmentation)
 
                 for jdx, val in enumerate(losses._asdict()):
                     if val == 'NOC_mse':
@@ -544,7 +545,8 @@ class TrainNOCs:
                 print("Epoch: {}  |  Iteration: {}  |  Train Loss: {}".format(epoch, niter, losses.total_loss.item()))
                 batch['image'] = batch['image'] * 2 - 1
                 visualize(writer=writer.train, batch=batch, output=(output, losses),
-                          name="Train Total", niter=niter, foreground=self.foreground)
+                          name="Train Total", niter=niter, foreground=self.foreground,
+                          part_segmentation=self.part_segmentation)
 
                 # batch['image'] = self.un_norm(batch['image'])
                 # visualize(writer=writer.train, batch=batch, output=(output, loss),
