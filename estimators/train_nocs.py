@@ -369,7 +369,7 @@ class TrainNOCs:
         losses = self.loss_tuple(total_loss=total_loss, NOC_loss=noc_loss,
                                  background_loss=background_loss, NOC_mse=mse,
                                  NOC_distance=distance,
-                                 part_segmentation=patch_loss)
+                                 part_segmentation_loss=patch_loss)
         return output, losses
 
     def train(self, batch):
