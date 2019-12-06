@@ -633,7 +633,7 @@ class ResUnet3HeadGenerator(nn.Module):
         We construct the U-Net from the innermost layer to the outermost layer.
         It is a recursive process.
         """
-        super(ResUnet2HeadGenerator, self).__init__()
+        super(ResUnet3HeadGenerator, self).__init__()
         latent = nn.Sequential(*list(*latent.children()))
 
         # down = []
