@@ -715,7 +715,7 @@ class ResUnet3HeadGenerator(nn.Module):
         net = torch.cat([downs.pop(-1), out], dim=1)
 
         outputs = []
-        for idx in range(2):
+        for idx in range(3):
             outputs.append(self.output_list[idx](net))
 
         return outputs
