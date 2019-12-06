@@ -302,7 +302,7 @@ class TrainNOCs:
                 continue
             selected_xy = xy_loc[idx, :num[idx, 0], :]
             selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
-            selected_classes = batch['patch_points'][idx, :num[idx, 0], 0]
+            selected_classes = batch['patch_points'][idx, :num[idx, 0], 0].long()
             # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
             # selected_noc = selected_noc.view((1,) + selected_noc.shape)
             sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,
@@ -526,8 +526,7 @@ class TrainNOCs:
         for idx, batch in enumerate(data_loader.train):
             for keys in batch:
                 batch[keys] = batch[keys].float().cuda()
-                if keys == "patch_points":
-                    batch[keys] = batch[keys].long()
+
             # batch['image'] = batch['image'] * 2 - 1
             output, losses = self.train(batch=batch)
 
