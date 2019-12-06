@@ -59,13 +59,13 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_Res18UNet_Decoder_Dropout_2Head_Coeff_100_select_0.8',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_train_Res18UNet_Decoder_Dropout_3Head_Coeff_1_select_1',
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=150',
                       '--num_heads=two',
                       '--model_type=res_unet',
                       '--backbone=res18',
-                      '--point_select=0.8'] + sys.argv[1:])
+                      '--point_select=1'] + sys.argv[1:])
     main(opt=opt)
 

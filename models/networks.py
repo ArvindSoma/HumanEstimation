@@ -619,6 +619,108 @@ class ResUnet2HeadGenerator(nn.Module):
         return outputs
 
 
+class ResUnet3HeadGenerator(nn.Module):
+    """Create a Unet-based generator"""
+
+    def __init__(self, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, outermost=True,
+                 use_dropout=True, last_layer=nn.Tanh(), latent=ResNet18Features(final_layer=-2),
+                 index_list=[8, 7, 6, 4, 3, 2]):
+        """Construct a Unet generator
+        Parameters:
+            output_nc (int) -- the number of channels in output images
+            ngf (int)       -- the number of filters in the last conv layer
+            norm_layer      -- normalization layer
+        We construct the U-Net from the innermost layer to the outermost layer.
+        It is a recursive process.
+        """
+        super(ResUnet2HeadGenerator, self).__init__()
+        latent = nn.Sequential(*list(*latent.children()))
+
+        # down = []
+        down = [latent[index: index_list[-(idx + 2)]] if idx > 0 else latent[:(index + 1)] for idx, index in
+                enumerate(reversed(index_list[1:]))]
+        # for idx, val in enumerate(reversed(index_list[1:])):
+        #     if idx == 0:
+        #         down += [latent[:(val + 1)]]
+        #     else:
+        #         down += [latent[val: index_list[-(idx + 2)]]]
+
+        self.down_sample = nn.ModuleList(down)
+
+        # for param in self.down_sample.parameters():
+        #     param.requires_grad = False
+        up = []
+
+        in_ch = ngf * 8
+        out_ch = in_ch // 2
+        skip = False
+        for idx, val in enumerate(reversed(index_list[1:-1])):
+            if idx == 0:
+                skip = False
+            else:
+                skip = True
+
+            if use_dropout and idx < 3:
+                dropout = True
+
+            else:
+                dropout = False
+
+            up += [nn.Sequential(nn.LeakyReLU(0.2),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip, norm=norm_layer,
+                                             dropout=dropout))]
+
+            in_ch = out_ch
+            out_ch = in_ch // 2 if (in_ch // 2) > ngf else 64
+        self.up_sample = nn.ModuleList(up)
+
+        self.output_list = nn.ModuleList()
+
+        if use_dropout:
+            prob = 0.2
+        else:
+            prob = 0
+
+        for idx in range(3):
+            if idx is 0:
+                out_ch = 2
+            elif idx is 1:
+                out_ch = output_nc
+            else:
+                out_ch = 25
+
+            seq = [nn.Sequential(nn.LeakyReLU(0.2),
+                                 UpConvLayer(in_ch=in_ch, out_ch=out_ch, stride=2, skip=skip,
+                                             norm=None, dropout=False)),
+                   nn.LeakyReLU(0.2),
+                   MultiDilation(dim_out=out_ch, norm_layer=None, use_dropout=False),
+                   ]
+            if idx == 1:
+                seq += [last_layer]
+            self.output_list.append(nn.Sequential(*seq))
+
+    def forward(self, net):
+        downs = []
+        for idx, layer in enumerate(self.down_sample):
+            net = layer(net)
+            downs.append(net)
+
+        out = downs.pop(-1)
+
+        for idx, layer in enumerate(self.up_sample):
+            if idx > 0:
+                out = torch.cat([downs.pop(-1), out], dim=1)
+            out = layer(out)
+
+        net = torch.cat([downs.pop(-1), out], dim=1)
+
+        outputs = []
+        for idx in range(2):
+            outputs.append(self.output_list[idx](net))
+
+        return outputs
+
+
 class ResUnetSkipConnectionBlock(nn.Module):
     """Defines the Unet submodule with skip connection.
         X -------------------identity----------------------

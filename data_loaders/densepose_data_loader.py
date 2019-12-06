@@ -87,6 +87,8 @@ class SparsePointLoader(Dataset):
         yx_loc = data_point['points']['yx']
         point_len, _ = yx_loc.shape
         noc_points = data_point['points']['noc']
+        iuv_points = data_point['points']['iuv']
+        patch_points = iuv_points[:, 0:1]
 
         background = cv2.imread(filename=os.path.join(self.parent_dir, 'background', internal_file_loc))
         # print(background[:, :, 0] == )
@@ -111,7 +113,7 @@ class SparsePointLoader(Dataset):
         yx_loc = yx_loc[loc_selection] - [c_h, c_w]
 
         noc_points = noc_points[loc_selection]
-
+        patch_points = patch_points[loc_selection]
         # mask_image = np.zeros((self.crop_size, self.crop_size, 1))
         # mask_image[yx_loc[:, 0], yx_loc[:, 1], 0] = 1
 
@@ -128,10 +130,12 @@ class SparsePointLoader(Dataset):
         pad_width = ((0, total_pad), (0, 0))
 
         noc_points = np.pad(noc_points, pad_width=pad_width, mode='constant', constant_values=0)
+        patch_points = np.pad(patch_points, pad_width=pad_width, mode='constant', constant_values=0)
         yx_loc = np.pad(yx_loc, pad_width=pad_width, mode='constant', constant_values=0)
 
         data_dict['noc_points'] = torch.from_numpy(noc_points)
         data_dict['yx_loc'] = torch.from_numpy(yx_loc)
+        data_dict['patch_points'] = torch.from_numpy(patch_points)
 
         data_dict['image'] = self.transform(data_dict['image'])
 
