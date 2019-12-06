@@ -302,7 +302,7 @@ class TrainNOCs:
                 continue
             selected_xy = xy_loc[idx, :num[idx, 0], :]
             selected_xy = selected_xy.view((1, 1,) + selected_xy.shape)
-            selected_classes = batch['patch_points'][idx, :num[idx, 0], 0:1]
+            selected_classes = batch['patch_points'][idx, :num[idx, 0], 0]
             # selected_noc = torch.transpose(torch.transpose(selected_noc, 0, 2), 1, 2)
             # selected_noc = selected_noc.view((1,) + selected_noc.shape)
             sampled_indices = self.sampler(input=output[idx: (idx + 1)], grid=selected_xy,

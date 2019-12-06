@@ -63,7 +63,7 @@ if __name__ == "__main__":
                       '--log_iter=200',
                       '--batch_size=8',
                       '--epochs=150',
-                      '--num_heads=two',
+                      '--num_heads=three',
                       '--model_type=res_unet',
                       '--backbone=res18',
                       '--point_select=1'] + sys.argv[1:])
