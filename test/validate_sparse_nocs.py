@@ -52,10 +52,10 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_test_Res18UNet_3Decoder_Dropout_2Head_Coeff_100',
+    opt = parse_args(['--log_dir=../data/logs/sparse_sampled_test_Res18UNet_3Decoder_Dropout_2Head_Coeff_100_select_1_rotated_mode',
                       '--log_iter=200',
                       '--batch_size=8',
-                      '--checkpoint=../saves/sparse_sampled_train_Res18UNet_3Decoder_Dropout_2Head_Coeff_100/save_330499.pth',
+                      '--checkpoint=../saves/sparse_sampled_train_Res18UNet_3Decoder_Dropout_2Head_Coeff_100_select_1_rotated_model/save_148724.pth',
                       '--num_heads=two',
                       '--model_type=res_unet',
                       '--backbone=res18'] + sys.argv[1:])
