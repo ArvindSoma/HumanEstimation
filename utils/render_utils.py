@@ -80,8 +80,8 @@ class Render:
             self.vertices -= self.py_scene.centroid
             # bounds = self.tri_mesh.bounding_box_oriented.extents
             bounds = self.py_scene.extents
-
-            self.vertices /= [bounds[0]] * 3
+            max_bounds = np.max(np.array(bounds))
+            self.vertices /= [max_bounds] * 3
             self.vertices += 1/2
 
     def render_visual(self, flags, face_id=None):

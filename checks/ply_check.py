@@ -11,6 +11,8 @@ import torch
 from models.textures import Texture
 import pickle
 
+from scipy.spatial.transform import Rotation as R
+
 import trimesh
 import argparse
 
@@ -42,6 +44,17 @@ def main(opt):
     # with open('../3d_data/nongrey_male_0110.jpg', 'rb') as file:
     texture = cv2.imread('../3d_data/nongrey_male_0110.jpg')
 
+    model_pose = np.zeros((1, 69))
+    global_rot = R.from_euler('zyx', [0, 45, 0], degrees=True)
+    rot_1 = R.from_euler('zyx', [45, 0, 0], degrees=True)
+    rot_2 = R.from_euler('zyx', [-45, 0, 0], degrees=True)
+
+    # model_pose[0, 0:3] = np.array([1, 1, 1])
+    model_pose[0, 0:3] = rot_1.as_rotvec()
+    model_pose[0, 3:6] = rot_2.as_rotvec()
+    model.body_pose.data = model.body_pose.new(model_pose)
+    model.global_orient.data = model.global_orient.new(global_rot.as_rotvec().reshape((1, 3)))
+
     output = model(return_verts=True)
     vertices = output.vertices.detach().cpu().numpy().squeeze()
 
@@ -63,7 +76,7 @@ def main(opt):
     smpl_render.set_render(vertices=smpl_vertices, faces=faces)
 
     norm_vertices = smpl_render.vertices
-    color = (norm_vertices * 255).astype('uint8')
+    color = (norm_vertices * 255)
     concatenated_smpl = np.concatenate((norm_vertices, color), axis=1)
     ply_start = ply_start.format(norm_vertices.shape[0])
 

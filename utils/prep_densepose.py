@@ -9,7 +9,7 @@ from scipy import io as io
 
 from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
-
+from scipy.spatial.transform import Rotation as R
 import trimesh
 from tqdm import tqdm
 
@@ -74,6 +74,17 @@ end_header\n'''
     seg_path = os.path.join(coco_folder, 'background')
     if not os.path.exists(seg_path):
         os.mkdir(seg_path)
+
+    model_pose = np.zeros((1, 69))
+    global_rot = R.from_euler('zyx', [0, 45, 0], degrees=True)
+    rot_1 = R.from_euler('zyx', [45, 0, 0], degrees=True)
+    rot_2 = R.from_euler('zyx', [-45, 0, 0], degrees=True)
+
+    # model_pose[0, 0:3] = np.array([1, 1, 1])
+    model_pose[0, 0:3] = rot_1.as_rotvec()
+    model_pose[0, 3:6] = rot_2.as_rotvec()
+    model.body_pose.data = model.body_pose.new(model_pose)
+    model.global_orient.data = model.global_orient.new(global_rot.as_rotvec().reshape((1, 3)))
 
     output = model(return_verts=True)
     vertices = output.vertices.detach().cpu().numpy().squeeze()

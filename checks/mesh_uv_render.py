@@ -12,6 +12,7 @@ import pickle
 
 import trimesh
 import argparse
+from scipy.spatial.transform import Rotation as R
 
 from external.smplx.smplx import body_models
 sys.path.insert(0, '../external/pyrender')
@@ -24,6 +25,17 @@ def main(opt):
     faces = np.array(smpl['f_extended'], dtype=np.int64).reshape((-1, 3))
     uv_faceid = io.loadmat('../3d_data/DensePoseData/UV_data/UV_Processed.mat')['All_FaceIndices']
     uv = smpl['uv']
+
+    model_pose = np.zeros((1, 69))
+    global_rot = R.from_euler('zyx', [0, 45, 0], degrees=True)
+    rot_1 = R.from_euler('zyx', [45, 0, 0], degrees=True)
+    rot_2 = R.from_euler('zyx', [-45, 0, 0], degrees=True)
+
+    # model_pose[0, 0:3] = np.array([1, 1, 1])
+    model_pose[0, 0:3] = rot_1.as_rotvec()
+    model_pose[0, 3:6] = rot_2.as_rotvec()
+    model.body_pose.data = model.body_pose.new(model_pose)
+    model.global_orient.data = model.global_orient.new(global_rot.as_rotvec().reshape((1, 3)))
 
     # with open('../3d_data/nongrey_male_0110.jpg', 'rb') as file:
     texture = cv2.imread('../3d_data/nongrey_male_0110.jpg')
@@ -113,7 +125,6 @@ def main(opt):
     scene.add(mesh, pose=global_tr)
     scene.add(camera, pose=camera_pose)
 
-
     rendered_color_visual, depth = render.render(scene=scene, flags=pyrender.RenderFlags.SKIP_CULL_FACES)
     # pyrender.Viewer(scene, render_flags={'cull_faces': False})
     cv2.imshow('Part UV', rendered_color_visual)
@@ -134,10 +145,11 @@ def main(opt):
     # rendered_uv[:, :, 2] /= 255
     out_view[rendered_color_visual < 0] = 0
 
-    # cv2.imwrite('../saves/checks/mesh_normalized_uv.jpg', (rendered_uv * 255).astype('uint8'))
+    cv2.imwrite('../saves/checks/mesh_normalized_uv.jpg', (rendered_uv * 255).astype('uint8'))
     cv2.imshow('Coords', out_view)
     cv2.imwrite('../saves/checks/mesh_uv_render.jpg', (out_view * 255).astype('uint8'))
     cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 def parse_args(args):
